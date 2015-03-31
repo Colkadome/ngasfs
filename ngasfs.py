@@ -25,6 +25,22 @@ if not hasattr(fuse, '__version__'):
 fuse.fuse_python_api = (0, 2)
 
 SERVER_LOCATION = 'http://ec2-54-152-35-198.compute-1.amazonaws.com:7777/'
+FILE_LIST_TIMER = 0
+FILE_LIST = atpy.Table(SERVER_LOCATION + 'QUERY?query=files_list&format=list',type='ascii')
+
+
+def get_file_list():
+    """
+    checks if FILE_LIST should be updated and returns it
+    """
+    global FILE_LIST_TIMER
+    global FILE_LIST
+    currentTime = time.clock()
+    timeDiff = time.clock() - FILE_LIST_TIMER
+    if timeDiff > 10:
+        FILE_LIST_TIMER = time.clock()
+        FILE_LIST = atpy.Table(SERVER_LOCATION + 'QUERY?query=files_list&format=list',type='ascii')
+    return FILE_LIST
 
 class PseudoStat(fuse.Stat):
     """
@@ -429,7 +445,6 @@ class VFile(object):
         self.__dirty = False
         self.__lock.release()
 
-
 class DBDumpFS:
     """
     This is the class for interactions with the dumpfs.sqlite DB.
@@ -567,11 +582,6 @@ class DBDumpFS:
             Dentry(parent=parent_i, inode_num=inode_num,
                     filename=split_path(path)[-1], connection=trans)
             trans.commit()
-
-            # JOE CODE #
-
-            ############
-
             return ret.inode_num
 
     def create(self, path, mode):
@@ -606,10 +616,11 @@ class DBDumpFS:
         mode: octal, used to store file permissions.
         """
         if mode == 0:
-            mode = 0o644|stat.S_IFREG
+            mode = 0o644| _IFREG
         if flags&os.O_CREAT == os.O_CREAT:
             self.create(path, mode)
-        T = atpy.Table(SERVER_LOCATION + 'QUERY?query=files_list&format=list',type='ascii')
+        T = get_file_list()
+        #T = atpy.Table(SERVER_LOCATION + 'QUERY?query=files_list&format=list',type='ascii')
         if not (path[1:] in T['col3']):
             if path in self.__openfiles:
                 self.__openfiles[path].open()
@@ -645,7 +656,8 @@ class DBDumpFS:
         """
 
         #Create a list of available files
-        T = atpy.Table(SERVER_LOCATION + 'QUERY?query=files_list&format=list',type='ascii')
+        T = get_file_list()
+        #T = atpy.Table(SERVER_LOCATION + 'QUERY?query=files_list&format=list',type='ascii')
         #Check is file is local
         if not (path[1:] in T['col3']):
             if not path in self.__openfiles:
@@ -682,7 +694,8 @@ class DBDumpFS:
         path: string, current working directory path.
         """
         #Create a list of available files
-        T = atpy.Table(SERVER_LOCATION + 'QUERY?query=files_list&format=list',type='ascii')
+        T = get_file_list()
+        #T = atpy.Table(SERVER_LOCATION + 'QUERY?query=files_list&format=list',type='ascii')
         #Check is file is local
         if not (path[1:] in T['col3']):
             now = time.time()
@@ -859,7 +872,6 @@ class DBDumpFS:
             return self.read(path, a.size, 0)
         raise FileSystemError("Not symlink")
 
-
 class SqliteDumpFS(Fuse):
     """
     Honestly not sure what this is for, have left it unedited and haven't had it interfering.
@@ -874,13 +886,15 @@ class SqliteDumpFS(Fuse):
 
     def main(self, *args, **kw):
         import os
+        global FILE_LIST_TIMER
+        FILE_LIST_TIMER = time.clock()
         fullpath = os.path.abspath(os.path.expanduser(os.path.expandvars(
             self.db_path)))
         self.__backend = DBDumpFS("sqlite:"+fullpath)
         Fuse.main(self, *args, **kw)
 
     def getattr(self, path):
-        print "*** getattr :", path
+        #print "*** getattr :", path
         try:
             inode = self.__backend.stat(path)
         except FileSystemError:
@@ -970,7 +984,6 @@ class SqliteDumpFS(Fuse):
         return 0
 
     def open (self, path, flags):
-        print '*** open', path, flags
         self.__backend.open(path, flags)
         return 0
 
@@ -1079,14 +1092,12 @@ class SqliteDumpFS(Fuse):
 
     def access(self, path, mode):
         """ã‚¢ã‚¯ã‚»ã‚¹æ¨©ã®ç¢ºèª"""
-        print '*** access', path, oct(mode)
+        #print '*** access', path, oct(mode)
         try:
             inode = self.__backend.stat(path)
             return 0
         except FileSystemError:
             return -errno.ENOENT
-
-
 
 def main(**kwargs):
     """
@@ -1094,9 +1105,8 @@ def main(**kwargs):
     """
     usage = Fuse.fusage
     sdfs = SqliteDumpFS(version="%prog"+fuse.__version__,
-            usage=usage,
-            dash_s_do='setsingle',
-            **kwargs)
+            usage=usage, standard_mods = True,
+            dash_s_do='setsingle', **kwargs)
     sdfs.parser.add_option(mountopt="db_path", metavar="PATH",default="")
     sdfs.parse(values=sdfs, errex=1)
     sdfs.main()
