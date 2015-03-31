@@ -616,7 +616,7 @@ class DBDumpFS:
         mode: octal, used to store file permissions.
         """
         if mode == 0:
-            mode = 0o644| _IFREG
+            mode = 0o644|stat.S_IFREG
         if flags&os.O_CREAT == os.O_CREAT:
             self.create(path, mode)
         T = get_file_list()
@@ -894,7 +894,7 @@ class SqliteDumpFS(Fuse):
         Fuse.main(self, *args, **kw)
 
     def getattr(self, path):
-        #print "*** getattr :", path
+        print "*** getattr :", path
         try:
             inode = self.__backend.stat(path)
         except FileSystemError:
@@ -984,6 +984,7 @@ class SqliteDumpFS(Fuse):
         return 0
 
     def open (self, path, flags):
+        print '*** open', path, flags
         self.__backend.open(path, flags)
         return 0
 
@@ -1092,7 +1093,7 @@ class SqliteDumpFS(Fuse):
 
     def access(self, path, mode):
         """ã‚¢ã‚¯ã‚»ã‚¹æ¨©ã®ç¢ºèª"""
-        #print '*** access', path, oct(mode)
+        print '*** access', path, oct(mode)
         try:
             inode = self.__backend.stat(path)
             return 0
