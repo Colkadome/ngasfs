@@ -46,7 +46,7 @@ def main():
 			print "--------------------"
 			print "Uploading: " + filename
 			print "--------------------"
-			# send POST request and save response.
+			# send POST request and print response.
 			response = requests.post(SERVER_LOCATION + "ARCHIVE", headers=headers, files={filename: open(mountDir+"/"+filename, mode='rb')})
 			print response.text
 
