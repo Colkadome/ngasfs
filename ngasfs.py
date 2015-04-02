@@ -94,6 +94,7 @@ class Dentry(SQLObject):
     parent = ForeignKey("Inode", notNone=True) #primary key of root from inode table
     filename = UnicodeCol(notNone=True) #Name of file
     inode_num = IntCol(notNone=True) #reference to inode_num from inode table
+    server_loc = StringCol(notNone=False)   #the server location
     p_index = DatabaseIndex("parent")
     p_name_index = DatabaseIndex("parent", "filename")
 
@@ -580,7 +581,8 @@ class DBDumpFS:
                     gid=os.getgid(), atime=now, ctime=now,
                     mtime=now, size=0, mode=mode, dev=dev, connection=trans)
             Dentry(parent=parent_i, inode_num=inode_num,
-                    filename=split_path(path)[-1], connection=trans)
+                    filename=split_path(path)[-1], connection=trans,
+                    server_loc=None)
             trans.commit()
             return ret.inode_num
 
@@ -714,7 +716,8 @@ class DBDumpFS:
             for de in dl:
                 if de.inode_num != i_num:
                     Dentry(parent=new_i, filename=de.filename,
-                            inode_num=de.inode_num, connection=trans)
+                            inode_num=de.inode_num, connection=trans,
+                            server_loc = None)
             trans.commit()
             if path in self.__openfiles:
                 while not self.__openfiles[path].is_close():
@@ -751,11 +754,13 @@ class DBDumpFS:
         for de in dl:
             if de.inode_num != i_num:
                 Dentry(parent=new_i, filename=de.filename,
-                        inode_num=de.inode_num, connection=trans)
+                        inode_num=de.inode_num, connection=trans,
+                        server_loc=None)
         parent_i_num = self.__get_parent_inode(newPath)
         parent_i = Inode.selectBy(inode_num=parent_i_num).orderBy("-rev_id")[0]
         Dentry(parent=new_i, filename=split_path(newPath)[-1],
-                inode_num=i_num, connection=trans)
+                inode_num=i_num, connection=trans,
+                server_loc=None)
         old_i = Inode.selectBy(inode_num=i_num).orderBy("-rev_id")[0]
         Inode(inode_num=old_i.inode_num,
                 rev_id=old_i.rev_id+1,
@@ -847,9 +852,11 @@ class DBDumpFS:
                 mode=parent_i.mode, connection=trans)
         for de in dl:
             Dentry(parent=new_i, filename=de.filename,
-                        inode_num=de.inode_num, connection=trans)
+                    inode_num=de.inode_num, connection=trans,
+                    server_loc=None)
         Dentry(parent=new_i, filename=split_path(newPath)[-1],
-                inode_num=i_num, connection=trans)
+                inode_num=i_num, connection=trans,
+                server_loc=None)
         trans.commit()
 
     def symlink(self, oldPath, newPath):
