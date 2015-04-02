@@ -331,7 +331,7 @@ class VFile(object):
             b_offset = offset - (i_start * self.BLOCK_SIZE)
             i_end = int((offset + len(buf)) / self.BLOCK_SIZE)
             b_len = offset + len(buf) - (i_end * self.BLOCK_SIZE)
-            if blen > 0:
+            if b_len > 0:
                 i_end += 1
             for d in self.__list[i_start:i_end]:
                 tf.write(d.data)

@@ -37,11 +37,14 @@ def main():
 		print "Error: Database doesn't exist!"
 		exit()
 
-	# connect to server and get file names
+	# connect to server and get file attributes
 	T = atpy.Table(SERVER_LOCATION + 'QUERY?query=files_list&format=list',type='ascii')
-	fileNames = []
+	fileNames = []	# NGAS file IDs
+	itimes = []		# NGAS ingest times
 	for s in T['col3'][3:]:		# Get every entry from the 4th and onwards (to skip NGAS's first three lines)
 		fileNames.append(s)
+	for t in T['col9'][3:]:
+		itimes.append(t)
 
     # Execute code with connection
 	uploadCount = 0
@@ -59,11 +62,11 @@ def main():
 				pId = curr[2] # get parent ID
 				if pId==1:	# if the parent is mount directory (id = 1), exit loop
 					break
-				curr = result[getListIndex(result,1,pId)]	# find parent entry, and move to it
+				curr = result[getListIndex(result,0,pId)]	# find parent entry, and move to it
 				fpath = curr[1] + "/" + fpath	# append parent's name to fpath
 			fpath = mountDir + "/" + fpath	# append mount to path
 
-			# check if file does not exist on the server, and is not a directory!
+			# check if file does not exist on the server, and is not a directory! (USE DATE MODIFIED??)
 			fname = entry[1]
 			if fname not in fileNames and os.path.isfile(fpath):
 				uploadCount += 1
@@ -75,9 +78,10 @@ def main():
 				#print "--------------------"
 				print "Uploading: " + fpath
 				#print "--------------------"
-				# send POST request and print response.
+				# send POST request to upload file, and print response.
 				response = requests.post(SERVER_LOCATION + "ARCHIVE", headers=headers, files={fname: open(fpath, mode='rb')})
-				# print response.text
+				#print response.text
+	# print info for the user
 	if uploadCount > 0:
 		print str(uploadCount) + " file(s) successfully uploaded to NGAS."
 	else:
