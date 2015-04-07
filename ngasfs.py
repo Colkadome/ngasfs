@@ -705,42 +705,65 @@ class DBDumpFS:
     def remove(self, path):
         """
         Removes the file from the directory and database.
-        NOTE: This funtion should not be used and therefore has been removed.
 
         self: object, object(file/directory) that the function was called on.
         path: string, current working directory path.
         """
         #Create a list of available files
         T = get_file_list()
-        #T = atpy.Table(SERVER_LOCATION + 'QUERY?query=files_list&format=list',type='ascii')
         #Check is file is local
         if not (path[1:] in T['col3']):
-            now = time.time()
-            i_num = self.__get_inode(path)
-            parent_i_num = self.__get_parent_inode(path)
-            parent_i = Inode.selectBy(inode_num=parent_i_num).orderBy("-rev_id")[0]
-            dl = Dentry.selectBy(parent=parent_i)
             conn = sqlhub.getConnection()
             trans = conn.transaction()
-            new_i = Inode(inode_num=parent_i.inode_num,
-                    rev_id=parent_i.rev_id+1,
-                    uid=parent_i.uid, gid=parent_i.gid,
-                    atime=now, mtime=parent_i.mtime,
-                    ctime=parent_i.ctime, size=parent_i.size,
-                    mode=parent_i.mode, connection=trans)
-            for de in dl:
-                if de.inode_num != i_num:
-                    Dentry(parent=new_i, filename=de.filename,
-                            inode_num=de.inode_num, connection=trans,
-                            server_loc = None)
+            
+            i_num = self.__get_inode(path)
+            inode = Inode.selectBy(inode_num=i_num).orderBy('-rev_id')
+
+            if not (stat.S_ISDIR(inode[0].mode)):
+                #delete file and finish
+                dataList = DataList.selectBy(parent=inode[0])
+                for dl in dataList:
+                    dl.destroySelf()
+                rawdata = 
+                for rd in 
+                #TODO delete raw data? or is it automatic?
+                #TODO revise parent?
+            else:
+                #search all children and delete them
+                childrenDE = Dentry.selectBy(parent=inode[0])
+                for childDE in childrenDE:
+                    self.remove(path + '/' + childDE.filename)
+            
+            dentry = Dentry.selectBy(inode_num = i_num)
+            for de in dentry:
+                de.destroySelf()
+            for i in inode:
+                i.destroySelf()
             trans.commit()
+
             if path in self.__openfiles:
                 while not self.__openfiles[path].is_close():
                     self.__openfiles[path].close()
                 del self.__openfiles[path]
         #If not local then file is from server and removal is denied.
         else:
-            pass
+            #TODO consider adding warning: file not removed from server
+
+            conn = sqlhub.getConnection()
+            trans = conn.transaction() #TODO do I need to do this?
+
+            i_num = self.__get_inode(path)
+            inode = Inode.selectBy(inode_num=i_num)
+            dentry = Dentry.selectBy(inode_num = i_num)
+            
+            for i in inode:
+                i.destroySelf()
+            for de in dentry:
+                de.destroySelf()
+            trans.commit() 
+
+            
+
 
     def renameOld(self, oldPath, newPath):
         """
@@ -1011,7 +1034,7 @@ class SqliteDumpFS(Fuse):
         Fuse.main(self, *args, **kw)
 
     def getattr(self, path):
-        #print "*** getattr :", path
+        print "*** getattr :", path
         try:
             inode = self.__backend.stat(path)
         except FileSystemError:
@@ -1161,7 +1184,7 @@ class SqliteDumpFS(Fuse):
          ãƒ•ã‚¡ã‚¤ãƒ«åã®é•·ã•ã€€ãƒ•ã‚¡ã‚¤ãƒ«åã«ä½¿ãˆã‚‹æœ€å¤§é•·ã•
         æœªå®šç¾©ãªã‚‰ãã®è¦ç´ ã‚’0ã«ã—ã¦è¿”ã™
         """
-        #print '*** statfs'
+        print '*** statfs'
         stvfs = fuse.StatVfs()
         stvfs.f_bsize = self.block_size
         return stvfs
