@@ -72,6 +72,7 @@ class PseudoStat(fuse.Stat):
 class Inode(SQLObject):
     """
     Creates an object to interact with the inode table
+    Each inode represents a file/folder
     """
 
     
@@ -90,6 +91,8 @@ class Inode(SQLObject):
 class Dentry(SQLObject):
     """
     Creates an object to interact with the dentry table
+    Each entry represents a file or folder which has a parent.
+    This seems to hold the hierarchical structure of the file system
     """
     parent = ForeignKey("Inode", notNone=True) #primary key of root from inode table
     filename = UnicodeCol(notNone=True) #Name of file
@@ -99,7 +102,10 @@ class Dentry(SQLObject):
 
 class RawData(SQLObject):
     """
-    Interects with a table that holds the raw data, not used in this implementation
+    Interects with a table that holds the raw data, [not used in this implementation]
+    I think it is used
+    Seems to hold compressed blocks of data relating to parts of a file
+    These blocks are linked together using DataList
     """
     hash_sha256 = StringCol(notNone=True, length=64)
     data = StringCol(notNone=True)
@@ -114,6 +120,9 @@ class RawData(SQLObject):
 class DataList(SQLObject):
     """
     Interacts with the data_list table
+    Links together multiple blocks of data from RawData to an Inode
+    They are ordered using 'series'
+    an Inode seems to be able to have 0 to many DataLists, ie data blocks
     """
     parent = ForeignKey("Inode", notNone=True) #Reference to inode primary key
     series = IntCol(notNone=True, default=0) #A type of versioning, 0 for new files
@@ -331,7 +340,7 @@ class VFile(object):
             b_offset = offset - (i_start * self.BLOCK_SIZE)
             i_end = int((offset + len(buf)) / self.BLOCK_SIZE)
             b_len = offset + len(buf) - (i_end * self.BLOCK_SIZE)
-            if blen > 0:
+            if b_len > 0:
                 i_end += 1
             for d in self.__list[i_start:i_end]:
                 tf.write(d.data)
@@ -467,6 +476,12 @@ class DBDumpFS:
         Dentry.createTable(ifNotExists=True)
         RawData.createTable(ifNotExists=True)
         DataList.createTable(ifNotExists=True)
+
+        #Inode._connection.debug = True
+        #Dentry._connection.debug = True
+        #RawData._connection.debug = True
+        #DataList._connection.debug = True
+
         self.__init_root()
         self.__openfiles = dict()
 
@@ -724,7 +739,7 @@ class DBDumpFS:
         else:
             pass
 
-    def rename(self, oldPath, newPath):
+    def renameOld(self, oldPath, newPath):
         """
         Removes an object from oldPath and places it on newPath
         NOTE: This function should not be used and has therefore been removed.
@@ -752,6 +767,7 @@ class DBDumpFS:
             if de.inode_num != i_num:
                 Dentry(parent=new_i, filename=de.filename,
                         inode_num=de.inode_num, connection=trans)
+        
         parent_i_num = self.__get_parent_inode(newPath)
         parent_i = Inode.selectBy(inode_num=parent_i_num).orderBy("-rev_id")[0]
         Dentry(parent=new_i, filename=split_path(newPath)[-1],
@@ -768,8 +784,107 @@ class DBDumpFS:
             while not self.__openfiles[oldPath].is_close():
                 self.__openfiles[oldPath].close()
             del self.__openfiles[oldPath]
-        
 
+    def rename2(self, oldPath, newPath):
+        """
+        Removes an object from oldPath and places it on newPath
+        NOTE: This function should not be used and has therefore been removed.
+
+        self: object, object(file/directory) that the function was called on.
+        oldPath: string, current path of object.
+        newPath: string, new path of object.
+
+        """
+        
+        conn = sqlhub.getConnection()
+        trans = conn.transaction()
+        now = time.time()
+        #get the Inode which will be moved/renamed
+        old_i_num = self.__get_inode(oldPath)
+        old_i = Inode.selectBy(inode_num=old_i_num).orderBy("-rev_id")[0]
+        #create the new Inode, only difference is rev_id and access time
+        #TODO should I delete the old Inode? Or is it automatic?
+        new_i = Inode(inode_num=old_i.inode_num,
+                rev_id=old_i.rev_id+1,
+                uid=old_i.uid, gid=old_i.gid,
+                atime=now, mtime=old_i.mtime,
+                ctime=old_i.ctime, size=old_i.size,
+                mode=old_i.mode, connection=trans)
+        #Change all the children to have the new parent we just created
+        dl = Dentry.selectBy(parent=old_i)
+        for de in dl:
+            Dentry(parent=old_i, filename=de.filename,
+                    inode_num=de.inode_num, connection=trans)
+        #Relink all any data that is pointing to the old inode
+        datalist = DataList.selectBy(parent=old_i)
+        for d in datalist:
+            d.set(parent = new_i)
+        #new_parent_i is the folder which holds the new inode
+        #ie 'new' in /this/is/the/new/path where path is the new name
+        #(this will be the same as old if simply renaming a file)
+        new_parent_i_num = self.__get_parent_inode(newPath)
+        new_parent_i = Inode.selectBy(inode_num=new_parent_i_num).orderBy("-rev_id")[0]
+        #set dentry entry to point to the new parent
+        #TODO again should I delete the old dentry?
+        Dentry(parent=new_parent_i, filename=split_path(newPath)[-1],
+                inode_num=old_i_num, connection=trans)
+        trans.commit()
+        if oldPath in self.__openfiles:
+            while not self.__openfiles[oldPath].is_close():
+                self.__openfiles[oldPath].close()
+            del self.__openfiles[oldPath]
+
+
+        
+    def rename(self, oldPath, newPath):
+        """
+        Removes an object from oldPath and places it on newPath
+        NOTE: This function should not be used and has therefore been removed.
+
+        self: object, object(file/directory) that the function was called on.
+        oldPath: string, current path of object.
+        newPath: string, new path of object.
+
+        """
+        
+        conn = sqlhub.getConnection()
+        trans = conn.transaction()
+        now = time.time()
+        #get the Inode which will be moved/renamed and anything which it is parent to
+        inode_num = self.__get_inode(oldPath)
+        inode = Inode.selectBy(inode_num=inode_num).orderBy("-rev_id")[0]
+           
+        dentry = Dentry.selectBy(inode_num=inode_num)[0]
+            
+        new_parent_i_num = self.__get_parent_inode(newPath)
+        new_parent_i = Inode.selectBy(inode_num=new_parent_i_num).orderBy("-rev_id")[0]
+
+        old_parent_i_num = self.__get_parent_inode(oldPath)
+        old_parent_i = Inode.selectBy(inode_num=old_parent_i_num).orderBy("-rev_id")[0]
+
+
+        print "\n\n\n ATTEMPT TO RENAME A FILE", oldPath, newPath
+        print "\n\n\n"   
+
+        dentry.set(parent = new_parent_i)
+        dentry.filename = split_path(newPath)[-1]
+        inode.rev_id += 1
+        inode.atime = now
+
+        new_parent_i.rev_id += 1
+        new_parent_i.atime += now
+        new_parent_i.mtime += now
+
+        old_parent_i.rev_id += 1
+        old_parent_i.atime += now
+        old_parent_i.mtime += now        
+
+        trans.commit()
+        if oldPath in self.__openfiles:
+            while not self.__openfiles[oldPath].is_close():
+                self.__openfiles[oldPath].close()
+            del self.__openfiles[oldPath]
+    
     def chmod(self, path, mode):
         """
         Changes access permissions
@@ -894,7 +1009,7 @@ class SqliteDumpFS(Fuse):
         Fuse.main(self, *args, **kw)
 
     def getattr(self, path):
-        print "*** getattr :", path
+        #print "*** getattr :", path
         try:
             inode = self.__backend.stat(path)
         except FileSystemError:
@@ -1044,7 +1159,7 @@ class SqliteDumpFS(Fuse):
          ãƒ•ã‚¡ã‚¤ãƒ«åã®é•·ã•ã€€ãƒ•ã‚¡ã‚¤ãƒ«åã«ä½¿ãˆã‚‹æœ€å¤§é•·ã•
         æœªå®šç¾©ãªã‚‰ãã®è¦ç´ ã‚’0ã«ã—ã¦è¿”ã™
         """
-        print '*** statfs'
+        #print '*** statfs'
         stvfs = fuse.StatVfs()
         stvfs.f_bsize = self.block_size
         return stvfs
@@ -1093,7 +1208,7 @@ class SqliteDumpFS(Fuse):
 
     def access(self, path, mode):
         """ã‚¢ã‚¯ã‚»ã‚¹æ¨©ã®ç¢ºèª"""
-        print '*** access', path, oct(mode)
+        #print '*** access', path, oct(mode)
         try:
             inode = self.__backend.stat(path)
             return 0
