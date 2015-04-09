@@ -10,13 +10,14 @@ import ntpath
 import requests
 #from ngamsPClient import ngamsPClient
 
-# TODO: Fix strings being added to file upon upload
-
 def getListIndex(list,col,val):
 	for i in range(len(list)):
 		if list[i][col] == val:
 			return i
 	return -1
+
+def getServerFromPath(path, cursor):
+	return 0
 
 def postFS(sLoc, fs_path, mountDir):
 
@@ -24,17 +25,17 @@ def postFS(sLoc, fs_path, mountDir):
 	#nClient = ngamsPClient(host=SERVER_LOCATION)
 
 	# check if mount dir exists
-	if not os.path.isdir(mountDir):
-		print "Error: Directory " + mountDir + " does not exist!"
-		exit()
+	if not ntpath.isdir(mountDir):
+		print "ERROR: Directory " + mountDir + " does not exist!"
+		return 1
 
 	# check if database exists
 	con = None
-	if os.path.isfile(fs_path):
+	if ntpath.isfile(fs_path):
 		con = lite.connect(fs_path)
 	else:
-		print "Error: Database doesn't exist!"
-		exit()
+		print "ERROR: Database doesn't exist!"
+		return 1
 
 	# For each distinct filename in dentry, get a dentry-inode pair
 	cur = con.cursor()
@@ -69,28 +70,42 @@ def postFS(sLoc, fs_path, mountDir):
 
 	# print info for the user
 	if uploadCount > 0:
-		print str(uploadCount) + " file(s) successfully uploaded to NGAS."
+		print "-- " + str(uploadCount) + " file(s) successfully uploaded to NGAS."
 	else:
-		print "All files exist on server."
+		print "-- All files exist on server."
 
 	# strip database file
 	cur.execute("DELETE FROM raw_data")
 	cur.execute("DELETE FROM data_list")
 	con.commit()
 	# upload database file
-	print "Uploading: " + fs_path
-	requests.post(sLoc + "ARCHIVE", headers={"Content-type":"application/octet-stream",
-		"Content-Disposition":"filename="+fs_path},
-		files={fs_path: open(fs_path, mode='rb')})
+	postFile(sLoc, fs_path)
 	# close sqlite3 db connection
 	con.close()
 
+# Posts file(s) to a server.
+# ARGUMENTS:
+# sLoc = server address
+# patterns = array or string, containing pattern(s) for glob2 to match.
+def postFile(sLoc, fs_id, patterns):	#ADD option for forced upload
 
-def postFile(sLoc, *paths):
+	# convert patterns to a list
+    if not isinstance(patterns, list):
+        patterns = [patterns]
 
+	# construct array containing distinct paths.
+	paths = []
+	for pattern in patterns:
+		tempPaths = glob2.glob(pattern)
+		paths = paths + list(set(tempPaths)-set(paths))
+
+	# iterate through paths, and upload files
 	for path in paths:
-		# check if the path is a file
-		if os.path.isfile(path):
+		if ntpath.isfile(path):
+
+			# check if file is already on the server
+			# CHECK HERE
+
 			print "Uploading: " + path
 			filename = ntpath.basename(path)
 			# send POST request to upload file, and print response.
@@ -104,5 +119,4 @@ if __name__ == "__main__":
 
 	if len(sys.argv) < 4:
 		print "USAGE: post.py <server_loc> <fs_path> <mount_dir>"
-		exit()
 	postFS(sys.argv[1],sys.argv[2],sys.argv[3])

@@ -6,67 +6,67 @@ import datetime
 import os
 from pprint import pprint
 
+import numpy
+import ntpath
 from urllib2 import urlopen, URLError, HTTPError
 
-def getFile(sLoc, fs_id, *file_ids):
+# add file(s) from NGAS to the FS
+def getFile(sLoc, fs_id, patterns):
 
     # check if database exists
     con = None
-    if os.path.isfile(fs_id):
+    if ntpath.isfile(fs_id):
         con = lite.connect(fs_id)
     else:
-        print "Error: Database doesn't exist!"
-        exit()
+        print "ERROR: Database doesn't exist!"
+        return 1
 
-    # ITERATE THROUGH FILE_IDS AND ADD THEM TO FS_ID
+    # create list of all filenames on FS
+    db_fileName = []
+    cur = con.cursor()
+    cur.execute("SELECT DISTINCT filename FROM dentry")
+    for entry in cur.fetchall():
+        db_fileName.append(entry[0])
 
-def getFS(sLoc, fs_id):
-    try:
-        url = sLoc + 'RETRIEVE?file_id="'+fs_id+'"'
-        f = urlopen(url)
-        print "Downloading " + fs_id
+    # convert patterns to a list
+    if not isinstance(patterns, list):
+        patterns = [patterns]
 
-        # Open local file for writing
-        with open(fs_id, "wb") as local_file:
-            local_file.write(f.read())
-    #handle errors
-    except HTTPError, e:
-        print "HTTP Error:", e.code, url
-    except URLError, e:
-        print "URL Error:", e.reason, url
+    # filenames that should be ignored
+    ignore = set(db_fileName)
 
-def main():
+    # add filenames from server (and remove duplicate names)
+    T = numpy.array([], dtype=[('col1', 'S32'), ('col2', 'S37'), ('col3', 'S18'),
+        ('col4', 'S19'), ('col5', 'S24'), ('col6', 'S20'),
+        ('col7', 'S28'), ('col8', 'S22'), ('col9', 'S23'),
+        ('col10', 'S17'), ('col11', 'S19'), ('col12', 'S22'),
+        ('col13', 'S22'), ('col14', 'S24'), ('col15', 'S18')])
+    for p in patterns:
+        # gather new files using pattern
+        print "-- Matching " + p
+        temp = atpy.Table(sLoc + 'QUERY?query=files_like&format=list&like='+p,type='ascii')[3:]   # get everything past result 3
 
-    #Create a table list of all available files on the server.
-    T = atpy.Table(SERVER_LOCATION + 'QUERY?query=files_list&format=list',type='ascii')
+        # iterate through names.
+        # add entries that are not in DB, or have not been added previously.
+        names = temp['col3']
+        for i in range(len(names)):
+            if names[i] not in ignore:
+                print "Adding " + names[i]
+                T = numpy.append(T, temp[i])
+            else:
+                print "Ignored " + names[i] + ", already in FS."
+        # new names are now ignored
+        ignore = ignore.union(set(names))
 
-    fileName = []
-    size = []
-    ctime = []
-    itime = []
+    if len(T) > 0 :
 
-    for s in T['col3']:     # file IDs
-        fileName.append(s)
-    for i in T['col6']:     # sizes
-        size.append(i)
-    for t in T['col14']:    # creation times
-        ctime.append(t)
-    for t in T['col9']:     # ingest times
-        itime.append(t)
+        # gather file properties
+        s_fileName = T['col3']
+        s_size = T['col6']
+        s_ctime = T['col14']
+        s_itime = T['col9']
 
-
-    # check if database exists
-    con = None
-    if os.path.isfile(database):
-        con = lite.connect(database)
-    else:
-        print "Error: Database doesn't exist!"
-        exit()
-
-    #Use the connection to execute the following:
-    with con:
-        
-        cur = con.cursor() #Create cursor
+        # execute some code using con (CODE FROM FILLDB)
         cur.execute("SELECT * FROM dentry ORDER BY parent_id DESC")
         parent_id = cur.fetchone() #Get highest existng parent_id
         if parent_id == None:
@@ -90,25 +90,45 @@ def main():
         else:
             data_listID = data_listID[0]
 
-        for i in range(len(fileName))[3:]:
-            """
-            For every object in our original table, strip the nessesary data and then add it to the tables.
-            This adds the filename, filesize and access/modify/change times to the database for everytime.
-            This creates 'fake' files in the DB the appear when it is mounted.
-            """
-            cTime = ctime[i].replace("T", " ")
+        # iterate through T and add files to FS
+        for i in range(len(T)):
+
+            # fill database with data from server (FILLDB CODE)
+            cTime = s_ctime[i].replace("T", " ")
             cTime = time.mktime(datetime.datetime.strptime(cTime, "%Y-%m-%d %H:%M:%S.%f").timetuple())
-            iTime = itime[i].replace("T", " ")
+            iTime = s_itime[i].replace("T", " ")
             iTime = time.mktime(datetime.datetime.strptime(iTime, "%Y-%m-%d %H:%M:%S.%f").timetuple())
-            iString = "INSERT INTO inode VALUES({0}, {1}, 1, 1000, 1000, {2}, {2}, {3}, {4}, 33060, 0)".format(inodeID+i+1, inode_num+i+1, iTime, cTime, size[i])
-            deString = "INSERT INTO dentry VALUES({0}, {1}, '{2}', {3}, {4})".format(dentryID+i+1, parent_id, fileName[i], inode_num+i+1, "'"+SERVER_LOCATION+"'")
-            # daString = "INSERT INTO data_list VALUES({0}, {1}, 0, 0)".format(data_listID+i+1, inodeID+i+1)
+            iString = "INSERT INTO inode VALUES({0}, {1}, 1, 1000, 1000, {2}, {2}, {3}, {4}, 33060, 0)".format(inodeID+i+1, inode_num+i+1, iTime, cTime, s_size[i])
+            deString = "INSERT INTO dentry VALUES({0}, {1}, '{2}', {3}, {4})".format(dentryID+i+1, parent_id, s_fileName[i], inode_num+i+1, "'"+sLoc+"'")
             cur.execute(iString)
             cur.execute(deString)
-            # cur.execute(daString)
+
+        # print stuff for user
+        print "-- " + str(len(T)) + " file(s) successfully added to " + fs_id
+    else:
+        print "-- No files added to " + fs_id
+
+    # commit and close connection to DB
+    con.commit()
+    con.close()
+
+# Download a FS
+def getFS(sLoc, fs_id):
+    try:
+        url = sLoc + 'RETRIEVE?file_id="'+fs_id+'"'
+        f = urlopen(url)
+        print "Downloading " + fs_id
+
+        # Open local file for writing
+        with open(fs_id, "wb") as local_file:
+            local_file.write(f.read())
+    #handle errors
+    except HTTPError, e:
+        print "HTTP Error:", e.code, url
+    except URLError, e:
+        print "URL Error:", e.reason, url
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:
         print "USAGE: post.py <server_loc> <fs_id>"
-        exit()
     getFS(sys.argv[1],sys.argv[2])
