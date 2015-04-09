@@ -21,7 +21,7 @@ def getFile(sLoc, fs_id, patterns):
         print "ERROR: Database doesn't exist!"
         return 1
 
-    # create list of all filenames on FS
+    # connect to DB, create list of all filenames on FS
     db_fileName = []
     cur = con.cursor()
     cur.execute("SELECT DISTINCT filename FROM dentry")
@@ -104,7 +104,7 @@ def getFile(sLoc, fs_id, patterns):
             cur.execute(deString)
 
         # print stuff for user
-        print "-- " + str(len(T)) + " file(s) successfully added to " + fs_id
+        print "-- " + str(len(T)) + " file(s) added to " + fs_id
     else:
         print "-- No files added to " + fs_id
 
