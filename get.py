@@ -21,19 +21,19 @@ def getFile(sLoc, fs_id, patterns):
         print "ERROR: Database doesn't exist!"
         return 1
 
-    # connect to DB, create list of all filenames on FS
+    # connect to DB, create list of all filenames already on FS
     db_fileName = []
     cur = con.cursor()
     cur.execute("SELECT DISTINCT filename FROM dentry")
     for entry in cur.fetchall():
         db_fileName.append(entry[0])
 
+    # filenames that should be ignored
+    ignore = set(db_fileName)
+
     # convert patterns to a list
     if not isinstance(patterns, list):
         patterns = [patterns]
-
-    # filenames that should be ignored
-    ignore = set(db_fileName)
 
     # add filenames from server (and remove duplicate names)
     T = numpy.array([], dtype=[('col1', 'S32'), ('col2', 'S37'), ('col3', 'S18'),
