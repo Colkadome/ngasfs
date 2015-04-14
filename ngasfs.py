@@ -241,23 +241,20 @@ class VFile(object):
             size = self.__inode.size
         self.__read_list()
         self.__lock.acquire()
+
+        new_i = self.__inode
+        new_i.atime = now
+        new_i.mtime = now
+        new_i.size = size
+
         if not self.__dirty:
             max_rev = Inode.selectBy(inode_num=self.__inode.inode_num).\
                                                             max("rev_id")
             if not max_rev == self.__inode.rev_id:
                 raise FileSystemError("You use old file.")
-            new_i = Inode(inode_num=self.__inode.inode_num,
-                    rev_id=(max_rev+1), uid=self.__inode.uid,
-                    gid=self.__inode.gid, atime=now,
-                    mtime=now, ctime=self.__inode.ctime, size=size,
-                    mode=33060)
-            self.__inode = new_i
+            new_i.rev_id = max_rev+1
             self.__dirty = True
-        else:
-            new_i = self.__inode
-            new_i.atime = now
-            new_i.mtime = now
-            new_i.size = size
+            
         tmp_list = []
         pos = 0
         i_start = int(offset / self.BLOCK_SIZE)
@@ -297,23 +294,20 @@ class VFile(object):
         if size < self.__inode.size:
             size = self.__inode.size
         self.__lock.acquire()
+
+        new_i = self.__inode
+        new_i.atime = now
+        new_i.mtime = now
+        new_i.size = size
+
         if not self.__dirty:
             max_rev = Inode.selectBy(inode_num=self.__inode.inode_num).\
                                                             max("rev_id")
             if not max_rev == self.__inode.rev_id:
                 raise FileSystemError("You use old file.")
-            new_i = Inode(inode_num=self.__inode.inode_num,
-                    rev_id=(max_rev+1), uid=self.__inode.uid,
-                    gid=self.__inode.gid, atime=now,
-                    mtime=now, ctime=self.__inode.ctime, size=size,
-                    mode=33060)
-            self.__inode = new_i
+            new_i.rev_id = max_rev+1
             self.__dirty = True
-        else:
-            new_i = self.__inode
-            new_i.atime = now
-            new_i.mtime = now
-            new_i.size = size
+            
         tmp_list = []
         if len(self.__list) < 10:
             for d in self.__list:
@@ -375,24 +369,20 @@ class VFile(object):
         now = time.time()
         self.__read_list()
         self.__lock.acquire()
+
+        new_i = self.__inode
+        new_i.atime = now
+        new_i.mtime = now
+        new_i.size = size
+
         if not self.__dirty:
             max_rev = Inode.selectBy(inode_num=self.__inode.inode_num).\
                                                             max("rev_id")
             if not max_rev == self.__inode.rev_id:
                 raise FileSystemError("You use old file.", \
                         max_rev, self.__inode.rev_id)
-            new_i = Inode(inode_num=self.__inode.inode_num,
-                    rev_id=(max_rev+1), uid=self.__inode.uid,
-                    gid=self.__inode.gid, atime=now,
-                    mtime=now, ctime=self.__inode.ctime, size=size,
-                    mode=self.__inode.mode)
-            self.__inode = new_i
+            new_i.rev_id = max_rev + 1
             self.__dirty = True
-        else:
-            new_i = self.__inode
-            new_i.atime = now
-            new_i.mtime = now
-            new_i.size = size
         new_i.syncUpdate()
         self.__lock.release()
 
@@ -401,23 +391,20 @@ class VFile(object):
         now = time.time()
         self.__read_list()
         self.__lock.acquire()
+
+        new_i = self.__inode
+        new_i.atime = now
+        new_i.mtime = now
+        new_i.mode = mode
+        
         if not self.__dirty:
             max_rev = Inode.selectBy(inode_num=self.__inode.inode_num).\
                                                             max("rev_id")
             if not max_rev == self.__inode.rev_id:
                 raise FileSystemError("You use old file.")
-            new_i = Inode(inode_num=self.__inode.inode_num,
-                    rev_id=(max_rev+1), uid=self.__inode.uid,
-                    gid=self.__inode.gid, atime=now,
-                    mtime=now, ctime=self.__inode.ctime, size=self.__inode.size,
-                    mode=mode)
-            self.__inode = new_i
+            new_i.rev_id = max_rev + 1
             self.__dirty = True
-        else:
-            new_i = self.__inode
-            new_i.atime = now
-            new_i.mtime = now
-            new_i.mode = mode
+            
         new_i.syncUpdate()
         self.__lock.release()
 
@@ -426,32 +413,69 @@ class VFile(object):
         now = time.time()
         self.__read_list()
         self.__lock.acquire()
+
+        new_i = self.__inode
+        new_i.atime = now
+        new_i.mtime = now
+        new_i.uid = uid
+        new_i.gid = gid
+
         if not self.__dirty:
             max_rev = Inode.selectBy(inode_num=self.__inode.inode_num).\
                                                             max("rev_id")
             if not max_rev == self.__inode.rev_id:
                 raise FileSystemError("You use old file.")
-            new_i = Inode(inode_num=self.__inode.inode_num,
-                    rev_id=(max_rev+1), uid=uid,
-                    gid=gid, atime=now,
-                    mtime=now, ctime=self.__inode.ctime, size=self.__inode.size,
-                    mode=self.__inode.mode)
-            self.__inode = new_i
+            new_i.rev_id = max_rev + 1
             self.__dirty = True
-        else:
-            new_i = self.__inode
-            new_i.atime = now
-            new_i.mtime = now
-            new_i.uid = uid
-            new_i.gid = gid
+
         new_i.syncUpdate()
         self.__lock.release()
+
+    def rm(self):
+        """
+        Deletes Vfile and all database entries related to self
+        eg any datalist, dentry or inode entries
+        doesn't delete raw_data blocks at this stage as they can be used
+        by other files
+        """
+        self.__lock.acquire()
+        #delete file and finish
+        dataList = DataList.selectBy(parent=self.__inode)
+        for dl in dataList:
+            dl.destroySelf()
+        for dl_cache in self.__list:
+            dl_cashe.destroySelf()
+        dentry = Dentry.selectBy(inode_num = self.__inode.inode_num)
+        for de in dentry:
+            de.destroySelf()
+        inode = Inode.selectBy(inode_num = self.__inode.inode_num)
+        for i in inode:
+            i.destroySelf()
+        self.__inode.destroySelf()
+
+        self.__lock.release()  
+
+    def has_data(self):
+        """
+        returns whether VF has any data (datalist) associated with it
+        """
+        if not self.__list:
+            tmp = DataList.selectBy(parent=self.__inode).orderBy("series")
+            cnt = tmp.count()
+            return bool(cnt)
+        return True
+            
+
 
     def fsync(self):
         self.__lock.acquire()
         self.__inode.syncUpdate()
-        for i, v in enumerate(self.__list):
-            DataList(parent=self.__inode, series=i, data=v)
+        if not self.__list == []:
+            old_dl = DataList.selectBy(parent = self.__inode)
+            for data in old_dl:
+                data.destroySelf()
+            for i, v in enumerate(self.__list):
+                DataList(parent=self.__inode, series=i, data=v)
         self.__dirty = False
         self.__lock.release()
 
@@ -525,6 +549,8 @@ class DBDumpFS:
         path: string, current working directory path. 
     
         """
+
+
         if path == "/":
             return 0
         parent_dir = Inode.selectBy(inode_num=self.__get_parent_inode(path)).\
@@ -636,17 +662,15 @@ class DBDumpFS:
             mode = 0o644|stat.S_IFREG
         if flags&os.O_CREAT == os.O_CREAT:
             self.create(path, mode)
-        T = get_file_list()
-        #T = atpy.Table(SERVER_LOCATION + 'QUERY?query=files_list&format=list',type='ascii')
-        if not (path[1:] in T['col3']):
-            if path in self.__openfiles:
-                self.__openfiles[path].open()
-            else:
-                inode = self.__get_inode(path)
-                inode_ent = Inode.selectBy(inode_num=inode).orderBy("-rev_id")[0]
-                inode_ent.mode = 33060 #Sets the file to read-only mode before opening it.
-                self.__openfiles[path]=VFile(inode_ent)
-                self.__openfiles[path].open()
+    
+        if path in self.__openfiles:
+            self.__openfiles[path].open()
+        else:
+            inode = self.__get_inode(path)
+            inode_ent = Inode.selectBy(inode_num=inode).orderBy("-rev_id")[0]
+            inode_ent.mode = 33060 #Sets the file to read-only mode before opening it.
+            self.__openfiles[path]=VFile(inode_ent)
+            self.__openfiles[path].open()
 
     def close(self, path):
         """
@@ -672,20 +696,29 @@ class DBDumpFS:
         offset: interger?, starting position in file (invalid for reading from server.
         """
 
-        #Create a list of available files
-        T = get_file_list()
-        #T = atpy.Table(SERVER_LOCATION + 'QUERY?query=files_list&format=list',type='ascii')
-        #Check is file is local
-        if not (path[1:] in T['col3']):
-            if not path in self.__openfiles:
-                self.open(path, 0)
-            return self.__openfiles[path].read(length, offset)
-        #File is not local so open and read from server
+        
+
+        #Check is file is closed and open it
+        if not path in self.__openfiles:
+            self.open(path, 0)
+        #Check if file has data on local
+        has_data = self.__openfiles[path].has_data() 
+        if not has_data:
+            i_num = self.__get_inode(path)
+            dentry = Dentry.selectBy(inode_num = i_num)[0]
+            #check if file has ngas url and return server data
+            if dentry.server_loc:
+                urlString = dentry.server_loc + 'RETRIEVE?file_id=' + dentry.filename
+                ht = None
+                ht = urllib2.urlopen(urlString)
+                return ht.read(length)
+            # No data found, TODO throw error here
+            else:
+                raise FileSystemError('Cant find data or server location')
+        #open and return local data
         else:
-            urlString = SERVER_LOCATION + 'RETRIEVE?file_id=' + path[1:]
-            ht = None
-            ht = urllib2.urlopen(urlString)
-            return ht.read(length)
+            return self.__openfiles[path].read(length, offset)
+            
 
     def write(self, path, buf, offset):
         """
@@ -712,6 +745,7 @@ class DBDumpFS:
         #Create a list of available files
         T = get_file_list()
         #Check is file is local
+        #todo this should be changed to check if file has a URL
         if not (path[1:] in T['col3']):
             conn = sqlhub.getConnection()
             trans = conn.transaction()
@@ -719,38 +753,38 @@ class DBDumpFS:
             i_num = self.__get_inode(path)
             inode = Inode.selectBy(inode_num=i_num).orderBy('-rev_id')
 
-            if not (stat.S_ISDIR(inode[0].mode)):
-                #delete file and finish
-                dataList = DataList.selectBy(parent=inode[0])
-                for dl in dataList:
-                    dl.destroySelf()
-                rawdata = 
-                for rd in 
-                #TODO delete raw data? or is it automatic?
-                #TODO revise parent?
-            else:
+            if (stat.S_ISDIR(inode[0].mode)):
                 #search all children and delete them
                 childrenDE = Dentry.selectBy(parent=inode[0])
                 for childDE in childrenDE:
                     self.remove(path + '/' + childDE.filename)
-            
-            dentry = Dentry.selectBy(inode_num = i_num)
-            for de in dentry:
-                de.destroySelf()
-            for i in inode:
-                i.destroySelf()
-            trans.commit()
+
 
             if path in self.__openfiles:
+                self.__openfiles[path].rm()
                 while not self.__openfiles[path].is_close():
                     self.__openfiles[path].close()
                 del self.__openfiles[path]
-        #If not local then file is from server and removal is denied.
+            else:
+                #delete file and finish
+                dataList = DataList.selectBy(parent=inode[0])
+                for dl in dataList:
+                    dl.destroySelf()
+                #TODO revise parent?
+                dentry = Dentry.selectBy(inode_num = i_num)
+                for de in dentry:
+                    de.destroySelf()
+                for i in inode:
+                    i.destroySelf()
+            trans.commit()
+                
+        #If not local then file is from server
         else:
             #TODO consider adding warning: file not removed from server
-
             conn = sqlhub.getConnection()
             trans = conn.transaction() #TODO do I need to do this?
+            if path in self.__openfiles:
+                self.__openfiles[path].rm()
 
             i_num = self.__get_inode(path)
             inode = Inode.selectBy(inode_num=i_num)
@@ -762,107 +796,7 @@ class DBDumpFS:
                 de.destroySelf()
             trans.commit() 
 
-            
-
-
-    def renameOld(self, oldPath, newPath):
-        """
-        Removes an object from oldPath and places it on newPath
-        NOTE: This function should not be used and has therefore been removed.
-
-        self: object, object(file/directory) that the function was called on.
-        oldPath: string, current path of object.
-        newPath: string, new path of object.
-
-        """
-        
-        conn = sqlhub.getConnection()
-        trans = conn.transaction()
-        now = time.time()
-        i_num = self.__get_inode(oldPath)
-        parent_i_num = self.__get_parent_inode(oldPath)
-        parent_i = Inode.selectBy(inode_num=parent_i_num).orderBy("-rev_id")[0]
-        dl = Dentry.selectBy(parent=parent_i)
-        new_i = Inode(inode_num=parent_i.inode_num,
-                rev_id=parent_i.rev_id+1,
-                uid=parent_i.uid, gid=parent_i.gid,
-                atime=now, mtime=parent_i.mtime,
-                ctime=parent_i.ctime, size=parent_i.size,
-                mode=parent_i.mode, connection=trans)
-        for de in dl:
-            if de.inode_num != i_num:
-                Dentry(parent=new_i, filename=de.filename,
-                        inode_num=de.inode_num, connection=trans,
-                        server_loc=None)
-        parent_i_num = self.__get_parent_inode(newPath)
-        parent_i = Inode.selectBy(inode_num=parent_i_num).orderBy("-rev_id")[0]
-        Dentry(parent=new_i, filename=split_path(newPath)[-1],
-                inode_num=i_num, connection=trans,
-                server_loc=None)
-        old_i = Inode.selectBy(inode_num=i_num).orderBy("-rev_id")[0]
-        Inode(inode_num=old_i.inode_num,
-                rev_id=old_i.rev_id+1,
-                uid=old_i.uid, gid=old_i.gid,
-                atime=now, mtime=old_i.mtime,
-                ctime=old_i.ctime, size=old_i.size,
-                mode=old_i.mode, connection=trans)
-        trans.commit()
-        if oldPath in self.__openfiles:
-            while not self.__openfiles[oldPath].is_close():
-                self.__openfiles[oldPath].close()
-            del self.__openfiles[oldPath]
-
-    def rename2(self, oldPath, newPath):
-        """
-        Removes an object from oldPath and places it on newPath
-        NOTE: This function should not be used and has therefore been removed.
-
-        self: object, object(file/directory) that the function was called on.
-        oldPath: string, current path of object.
-        newPath: string, new path of object.
-
-        """
-        
-        conn = sqlhub.getConnection()
-        trans = conn.transaction()
-        now = time.time()
-        #get the Inode which will be moved/renamed
-        old_i_num = self.__get_inode(oldPath)
-        old_i = Inode.selectBy(inode_num=old_i_num).orderBy("-rev_id")[0]
-        #create the new Inode, only difference is rev_id and access time
-        #TODO should I delete the old Inode? Or is it automatic?
-        new_i = Inode(inode_num=old_i.inode_num,
-                rev_id=old_i.rev_id+1,
-                uid=old_i.uid, gid=old_i.gid,
-                atime=now, mtime=old_i.mtime,
-                ctime=old_i.ctime, size=old_i.size,
-                mode=old_i.mode, connection=trans)
-        #Change all the children to have the new parent we just created
-        dl = Dentry.selectBy(parent=old_i)
-        for de in dl:
-            Dentry(parent=old_i, filename=de.filename,
-                    inode_num=de.inode_num, connection=trans)
-        #Relink all any data that is pointing to the old inode
-        datalist = DataList.selectBy(parent=old_i)
-        for d in datalist:
-            d.set(parent = new_i)
-        #new_parent_i is the folder which holds the new inode
-        #ie 'new' in /this/is/the/new/path where path is the new name
-        #(this will be the same as old if simply renaming a file)
-        new_parent_i_num = self.__get_parent_inode(newPath)
-        new_parent_i = Inode.selectBy(inode_num=new_parent_i_num).orderBy("-rev_id")[0]
-        #set dentry entry to point to the new parent
-        #TODO again should I delete the old dentry?
-        Dentry(parent=new_parent_i, filename=split_path(newPath)[-1],
-                inode_num=old_i_num, connection=trans)
-        trans.commit()
-        if oldPath in self.__openfiles:
-            while not self.__openfiles[oldPath].is_close():
-                self.__openfiles[oldPath].close()
-            del self.__openfiles[oldPath]
-
-
-        
+              
     def rename(self, oldPath, newPath):
         """
         Removes an object from oldPath and places it on newPath
@@ -890,7 +824,10 @@ class DBDumpFS:
         old_parent_i = Inode.selectBy(inode_num=old_parent_i_num).orderBy("-rev_id")[0]  
 
         dentry.set(parent = new_parent_i)
-        dentry.filename = split_path(newPath)[-1]
+        if not dentry.server_loc:
+            dentry.filename = split_path(newPath)[-1]
+        elif dentry.filename != split_path(newPath)[-1]:
+            print 'Cant rename a server file - you will lose link with server'
         inode.rev_id += 1
         inode.atime = now
 
@@ -960,6 +897,7 @@ class DBDumpFS:
         if path in self.__openfiles:
             self.__openfiles[path].fsync()
 
+
     def link(self, oldPath, newPath):
         """
         Creates a link from the object at oldPath to an object at newPath.
@@ -1012,6 +950,29 @@ class DBDumpFS:
             return self.read(path, a.size, 0)
         raise FileSystemError("Not symlink")
 
+    def utime(self, path, times):
+        inode = None
+        if path in self.__openfiles:
+            inode = self.__openfiles[path].get_entry()
+        else: 
+            i_num = self.__get_inode(path)
+            inode = Inode.selectBy(inode_num = i_num)[0]
+        
+        if inode == None:
+            return 1
+        now = time.time()
+        if bool(times[0]):
+            inode.atime = times[0]
+        else:
+            inode.atime = now
+        if bool(times[1]):
+            inode.mtime = times[1]
+        else:
+            inode.mtime = now
+
+        return 0;
+
+
 class SqliteDumpFS(Fuse):
     """
     Honestly not sure what this is for, have left it unedited and haven't had it interfering.
@@ -1034,7 +995,7 @@ class SqliteDumpFS(Fuse):
         Fuse.main(self, *args, **kw)
 
     def getattr(self, path):
-        print "*** getattr :", path
+        #print "*** getattr :", path
         try:
             inode = self.__backend.stat(path)
         except FileSystemError:
@@ -1057,6 +1018,9 @@ class SqliteDumpFS(Fuse):
 
     def readdir(self, path, offset):
         print "*** readdir", path, offset
+
+        
+
         rets = [fuse.Direntry("."), fuse.Direntry("..")]
         dlist = self.__backend.readdir(path)
         for de in dlist:
@@ -1184,7 +1148,7 @@ class SqliteDumpFS(Fuse):
          ãƒ•ã‚¡ã‚¤ãƒ«åã®é•·ã•ã€€ãƒ•ã‚¡ã‚¤ãƒ«åã«ä½¿ãˆã‚‹æœ€å¤§é•·ã•
         æœªå®šç¾©ãªã‚‰ãã®è¦ç´ ã‚’0ã«ã—ã¦è¿”ã™
         """
-        print '*** statfs'
+        #print '*** statfs'
         stvfs = fuse.StatVfs()
         stvfs.f_bsize = self.block_size
         return stvfs
@@ -1221,7 +1185,7 @@ class SqliteDumpFS(Fuse):
         utimeã®ä¿®æ­£
         """
         print '*** utime', path, times
-        return -errno.ENOSYS
+        return self.__backend.utime(path,times)
 
     def write (self, path, buf, offset):
         print '*** write', path, len(buf), offset
@@ -1254,5 +1218,4 @@ def main(**kwargs):
 
 if __name__ == '__main__':
     main()
-
 
