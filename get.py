@@ -11,7 +11,9 @@ import ntpath
 from urllib2 import urlopen, URLError, HTTPError
 
 # add file(s) from NGAS to the FS
-def getFiles(sLoc, fs_id, patterns):
+def getFiles(sLoc, fs_id, patterns, *options):
+
+    # ADD A FORCE DOWNLOAD OPTION??
 
     # check if database exists
     con = None
