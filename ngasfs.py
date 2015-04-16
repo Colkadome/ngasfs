@@ -732,8 +732,8 @@ class DBDumpFS:
         """
         if not path in self.__openfiles:
             self.open(path, 0)
-        return sqlhub.doInTransaction(self.__openfiles[path].write,
-                buf, offset)
+        sqlhub.doInTransaction(self.__openfiles[path].write, buf, offset)
+        return 0
 
     def remove(self, path):
         """
@@ -966,9 +966,13 @@ class DBDumpFS:
         else:
             inode.atime = now
         if bool(times[1]):
+            if inode.ctime > times[1]:
+                inode.ctime = times[1]
             inode.mtime = times[1]
         else:
             inode.mtime = now
+
+
 
         return 0;
 
@@ -1185,7 +1189,8 @@ class SqliteDumpFS(Fuse):
         utimeã®ä¿®æ­£
         """
         print '*** utime', path, times
-        return self.__backend.utime(path,times)
+        self.__backend.utime(path,times) # -errno.ENOSYS#
+        return 0
 
     def write (self, path, buf, offset):
         print '*** write', path, len(buf), offset
