@@ -9,7 +9,6 @@ import ntpath
 
 import requests
 import numpy
-#from ngamsPClient import ngamsPClient
 
 # getListIndex()
 ######################
