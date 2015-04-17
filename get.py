@@ -10,10 +10,19 @@ import numpy
 import ntpath
 from urllib2 import urlopen, URLError, HTTPError
 
-# add file(s) from NGAS to the FS
-def getFiles(sLoc, fs_id, patterns, *options):
-
-    # ADD A FORCE DOWNLOAD OPTION??
+# getFiles()
+######################
+# Add multiple files to a FS from a NGAS server.
+# Will ignore files with the same ID as files in FS.
+# ARGS:
+# sLoc      - server address string (e.g. "http://ec2-54-152-35-198.compute-1.amazonaws.com:7777/")
+#               String should contain the trailing '/'.
+# fs_id     - path to FS database sqlite3 file.
+# patterns  - array of patterns sent to NGAS to retrieve certain files.
+#               Files are matched using SQL query: "SELECT file WHERE file_id LIKE pattern"
+# RETURN:
+######################
+def getFiles(sLoc, fs_id, patterns):
 
     # check if database exists
     con = None
@@ -99,15 +108,33 @@ def getFiles(sLoc, fs_id, patterns, *options):
     else:
         print "-- All files exist on " + fs_id
 
-# Download a FS
-def getFS(sLoc, fs_id):
+# downloadFile()
+######################
+# Downloads a single file from NGAS server.
+# Will download to the current working directory.
+# If the file already exists, the download is cancelled.
+# ARGS:
+# sLoc      - server address string (e.g. "http://ec2-54-152-35-198.compute-1.amazonaws.com:7777/")
+#               String should contain the trailing '/'.
+# file_id   - the ID of file to download.
+# options   - options.
+#               "-f" force download of file. If file aleady exists, it is overwritten.
+# RETURN:
+######################
+def downloadFile(sLoc, file_id, *options):
+
+    if "-f" not in options:
+        if ntpath.isfile(file_id):
+            print "WARNING: " + file_id + " already exists. Use -f to force download."
+            return 1
+
     try:
-        url = sLoc + 'RETRIEVE?file_id="'+fs_id+'"'
+        url = sLoc + 'RETRIEVE?file_id="'+file_id+'"'
         f = urlopen(url)
-        print "Downloading " + fs_id
+        print "Downloading " + file_id
 
         # Open local file for writing
-        with open(fs_id, "wb") as local_file:
+        with open(file_id, "wb") as local_file:
             local_file.write(f.read())
     #handle errors
     except HTTPError, e:
