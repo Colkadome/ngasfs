@@ -2,63 +2,45 @@ from Tkinter import *
 from post import *
 from get import *
 
-class App:
+class App():
 
 	def __init__(self, master):
+		
+		frame = Frame(master)
+		frame.pack()
 
-		# FRAME 1 #
-		###########
+		# Grid layout
 
-		frame1 = Frame(master)
-		frame1.pack()
+		frame.columnconfigure(0, weight=0)
+		frame.columnconfigure(1, weight=1)
+		frame.rowconfigure(0, weight=0)
+		frame.rowconfigure(1, weight=0)
+		frame.rowconfigure(2, weight=1)
 
-		self.button = Button(frame1, text="QUIT", fg="red", command=master.quit)
-		self.button.pack(side=LEFT)
+		# Elements
 
-		self.hi_there = Button(frame1, text="Hello", command=self.say_hi)
-		self.hi_there.pack(side=LEFT)
+		self.server_loc_label = Label(frame, text="Server Location:")
+		self.server_loc_input = Entry(frame)
 
-		# FRAME 2 #
-		###########
+		self.fs_id_label = Label(frame, text="FS file path:")
+		self.fs_id_input = Entry(frame)
 
-		frame2 = Frame(master)
-		frame2.pack()
+		self.console_text = Text(frame)
+		self.console_text.config(state=DISABLED)
 
-		# GET
-		self.get_label = Label(frame2, text="GET FILES")
-		self.get_label.pack(side=LEFT)
+		# Element locations
 
-		# Server Location
-		self.server_loc_label = Label(frame2, text="Server Location:")
-		self.server_loc_label.pack(side=LEFT)
+		self.server_loc_label.grid(row=0, column=0, padx=4, sticky=W)
+		self.server_loc_input.grid(row=0, column=1, sticky=E+W)
 
-		self.server_loc = Entry(frame2)
-		self.server_loc.pack(side=LEFT)
+		self.fs_id_label.grid(row=1, column=0, padx=4, sticky=W)
+		self.fs_id_input.grid(row=1, column=1, sticky=E+W)
 
-		# FS path
-		self.fs_id_label = Label(frame2, text="FS path:")
-		self.fs_id_label.pack(side=LEFT)
+		self.console_text.grid(row=2, column=0, padx=4, rowspan=1, columnspan=2, sticky=N+S+E+W)
 
-		self.fs_id = Entry(frame2)
-		self.fs_id.pack(side=LEFT)
+		# Further Init
 
-		# GET button
-		self.get_files = Button(frame2, text="GET", command=self.run_getFiles)
-		self.get_files.pack(side=LEFT)
-
-		# FRAME 3 #
-		###########
-
-		frame3 = Frame(master)
-		frame3.pack()
-
-		# console
-		self.console_text = Text(frame3)
-		self.print_to_console("Console:")
-		self.console_text.pack()
-
-	def say_hi(self):
-		self.print_to_console(self.server_loc.get())
+		self.print_to_console("hello!")        
 
 	def print_to_console(self, text):
 		self.console_text.config(state=NORMAL)
@@ -79,9 +61,9 @@ class App:
 
 def main():
 	root = Tk()
-
+	root.geometry("300x200+50+50")
+	root.title("ngasfs")
 	app = App(root)
-
 	root.mainloop()
 
 if __name__ == "__main__":

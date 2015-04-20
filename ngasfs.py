@@ -984,9 +984,12 @@ class SqliteDumpFS(Fuse):
     
     block_size = 32*1024
 
-    def __init__(self, *args, **kw):
+    def __init__(self, fs_id, *args, **kw):
         Fuse.__init__(self, *args, **kw)
-        self.db_path = "./dumpfs.sqlite"
+        if fs_id.endswith('.sqlite'):
+            self.db_path = fs_id
+        else:
+            self.db_path = fs_id + ".sqlite"
         self.__backend = DBDumpFS()
 
     def main(self, *args, **kw):
@@ -1209,12 +1212,12 @@ class SqliteDumpFS(Fuse):
         except FileSystemError:
             return -errno.ENOENT
 
-def main(**kwargs):
+def main(fs_id, **kwargs):
     """
     Uses FUSE to mount the sqliteFS to the mount point.
     """
     usage = Fuse.fusage
-    sdfs = SqliteDumpFS(version="%prog"+fuse.__version__,
+    sdfs = SqliteDumpFS(fs_id, version="%prog"+fuse.__version__,
             usage=usage, standard_mods = True,
             dash_s_do='setsingle', **kwargs)
     sdfs.parser.add_option(mountopt="db_path", metavar="PATH",default="")
@@ -1222,5 +1225,5 @@ def main(**kwargs):
     sdfs.main()
 
 if __name__ == '__main__':
-    main()
+    main(sys.argv[1])
 
