@@ -20,20 +20,27 @@ class Memory(LoggingMixIn, Operations):
         self.files = {}
         self.data = defaultdict(bytes)
         self.fd = 0
+        self.verbose = True     # print all activities
         now = time()
         self.files['/'] = dict(st_mode=(S_IFDIR | 0755), st_ctime=now,
                                st_mtime=now, st_atime=now, st_nlink=2)
 
     def chmod(self, path, mode):
+        if self.verbose:
+            print ' '.join(map(str, ["*** chmod", path, mode]))
         self.files[path]['st_mode'] &= 0770000
         self.files[path]['st_mode'] |= mode
         return 0
 
     def chown(self, path, uid, gid):
+        if self.verbose:
+            print ' '.join(map(str, ["*** chown", path, uid, gid]))
         self.files[path]['st_uid'] = uid
         self.files[path]['st_gid'] = gid
 
     def create(self, path, mode):
+        if self.verbose:
+            print ' '.join(map(str, ["*** chown", path, uid, gid]))
         self.files[path] = dict(st_mode=(S_IFREG | mode), st_nlink=1,
                                 st_size=0, st_ctime=time(), st_mtime=time(),
                                 st_atime=time())
@@ -42,12 +49,16 @@ class Memory(LoggingMixIn, Operations):
         return self.fd
 
     def getattr(self, path, fh=None):
+        if self.verbose:
+            print ' '.join(map(str, ["*** chown", path, uid, gid]))
         if path not in self.files:
             raise FuseOSError(ENOENT)
 
         return self.files[path]
 
     def getxattr(self, path, name, position=0):
+        if self.verbose:
+            print ' '.join(map(str, ["*** chown", path, uid, gid]))
         attrs = self.files[path].get('attrs', {})
 
         try:
@@ -56,10 +67,14 @@ class Memory(LoggingMixIn, Operations):
             return ''       # Should return ENOATTR
 
     def listxattr(self, path):
+        if self.verbose:
+            print ' '.join(map(str, ["*** chown", path, uid, gid]))
         attrs = self.files[path].get('attrs', {})
         return attrs.keys()
 
     def mkdir(self, path, mode):
+        if self.verbose:
+            print ' '.join(map(str, ["*** chown", path, uid, gid]))
         self.files[path] = dict(st_mode=(S_IFDIR | mode), st_nlink=2,
                                 st_size=0, st_ctime=time(), st_mtime=time(),
                                 st_atime=time())
@@ -67,19 +82,29 @@ class Memory(LoggingMixIn, Operations):
         self.files['/']['st_nlink'] += 1
 
     def open(self, path, flags):
+        if self.verbose:
+            print ' '.join(map(str, ["*** chown", path, uid, gid]))
         self.fd += 1
         return self.fd
 
     def read(self, path, size, offset, fh):
+        if self.verbose:
+            print ' '.join(map(str, ["*** chown", path, uid, gid]))
         return self.data[path][offset:offset + size]
 
     def readdir(self, path, fh):
+        if self.verbose:
+            print ' '.join(map(str, ["*** chown", path, uid, gid]))
         return ['.', '..'] + [x[1:] for x in self.files if x != '/']
 
     def readlink(self, path):
+        if self.verbose:
+            print ' '.join(map(str, ["*** chown", path, uid, gid]))
         return self.data[path]
 
     def removexattr(self, path, name):
+        if self.verbose:
+            print ' '.join(map(str, ["*** chown", path, uid, gid]))
         attrs = self.files[path].get('attrs', {})
 
         try:
@@ -88,40 +113,58 @@ class Memory(LoggingMixIn, Operations):
             pass        # Should return ENOATTR
 
     def rename(self, old, new):
+        if self.verbose:
+            print ' '.join(map(str, ["*** chown", path, uid, gid]))
         self.files[new] = self.files.pop(old)
 
     def rmdir(self, path):
+        if self.verbose:
+            print ' '.join(map(str, ["*** chown", path, uid, gid]))
         self.files.pop(path)
         self.files['/']['st_nlink'] -= 1
 
     def setxattr(self, path, name, value, options, position=0):
+        if self.verbose:
+            print ' '.join(map(str, ["*** chown", path, uid, gid]))
         # Ignore options
         attrs = self.files[path].setdefault('attrs', {})
         attrs[name] = value
 
     def statfs(self, path):
+        if self.verbose:
+            print ' '.join(map(str, ["*** chown", path, uid, gid]))
         return dict(f_bsize=512, f_blocks=4096, f_bavail=2048)
 
     def symlink(self, target, source):
+        if self.verbose:
+            print ' '.join(map(str, ["*** chown", path, uid, gid]))
         self.files[target] = dict(st_mode=(S_IFLNK | 0777), st_nlink=1,
                                   st_size=len(source))
 
         self.data[target] = source
 
     def truncate(self, path, length, fh=None):
+        if self.verbose:
+            print ' '.join(map(str, ["*** chown", path, uid, gid]))
         self.data[path] = self.data[path][:length]
         self.files[path]['st_size'] = length
 
     def unlink(self, path):
+        if self.verbose:
+            print ' '.join(map(str, ["*** chown", path, uid, gid]))
         self.files.pop(path)
 
     def utimens(self, path, times=None):
+        if self.verbose:
+            print ' '.join(map(str, ["*** chown", path, uid, gid]))
         now = time()
         atime, mtime = times if times else (now, now)
         self.files[path]['st_atime'] = atime
         self.files[path]['st_mtime'] = mtime
 
     def write(self, path, data, offset, fh):
+        if self.verbose:
+            print ' '.join(map(str, ["*** chown", path, uid, gid]))
         self.data[path] = self.data[path][:offset] + data
         self.files[path]['st_size'] = len(self.data[path])
         return len(data)
