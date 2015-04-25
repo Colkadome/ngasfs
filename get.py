@@ -10,19 +10,26 @@ import numpy
 import ntpath
 from urllib2 import urlopen, URLError, HTTPError
 
-# getFiles()
-######################
-# Add multiple files to a FS from a NGAS server.
-# Will ignore files with the same ID as files in FS.
-# ARGS:
-# sLoc      - server address string (e.g. "http://ec2-54-152-35-198.compute-1.amazonaws.com:7777/")
-#               String should contain the trailing '/'.
-# fs_id     - path to FS database sqlite3 file.
-# patterns  - array of patterns sent to NGAS to retrieve certain files.
-#               Files are matched using SQL query: "SELECT file WHERE file_id LIKE pattern"
-# RETURN:
-######################
+"""
+getFiles()
+-----------------------
+Add multiple files to a FS from a NGAS server.
+Will ignore files with the same ID as files in FS.
+
+ARGS:
+sLoc        - server address string (e.g. "http://ec2-54-152-35-198.compute-1.amazonaws.com:7777/")
+                String should contain the trailing '/'.
+fs_id       - path to FS database sqlite3 file.
+patterns    - array of patterns sent to NGAS to retrieve certain files.
+                Files are matched using SQL query: "SELECT file WHERE file_id LIKE pattern"
+
+RETURN:
+"""
 def getFiles(sLoc, fs_id, patterns):
+
+    # check for the '.sqlite' extension on fs_id
+    if not fs_id.endswith('.sqlite'):
+        fs_id = fs_id + ".sqlite"
 
     # check if database exists
     con = None
@@ -33,14 +40,11 @@ def getFiles(sLoc, fs_id, patterns):
         return 1
 
     # connect to DB, create list of all filenames already on FS
-    db_fileName = []
+    ignore = set()
     cur = con.cursor()
     cur.execute("SELECT DISTINCT filename FROM dentry")
     for entry in cur.fetchall():
-        db_fileName.append(entry[0])
-
-    # filenames that should be ignored
-    ignore = set(db_fileName)
+        ignore.add(entry[0])
 
     # convert patterns to a list
     if not isinstance(patterns, list):
@@ -108,19 +112,22 @@ def getFiles(sLoc, fs_id, patterns):
     else:
         print "-- All files exist on " + fs_id
 
-# downloadFile()
-######################
-# Downloads a single file from NGAS server.
-# Will download to the current working directory.
-# If the file already exists, the download is cancelled.
-# ARGS:
-# sLoc      - server address string (e.g. "http://ec2-54-152-35-198.compute-1.amazonaws.com:7777/")
-#               String should contain the trailing '/'.
-# file_id   - the ID of file to download.
-# options   - options.
-#               "-f" force download of file. If file aleady exists, it is overwritten.
-# RETURN:
-######################
+"""
+downloadFile()
+-----------------------
+Downloads a single file from NGAS server.
+Will download to the current working directory.
+If the file already exists, the download is cancelled.
+
+ARGS:
+sLoc        - server address string (e.g. "http://ec2-54-152-35-198.compute-1.amazonaws.com:7777/")
+                String should contain the trailing '/'.
+file_id     - the ID of file to download.
+options     - options.
+                "-f" force download of file. If file aleady exists, it is overwritten.
+
+RETURN:
+"""
 def downloadFile(sLoc, file_id, *options):
 
     if "-f" not in options:

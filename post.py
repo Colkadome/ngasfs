@@ -7,36 +7,43 @@ import os
 import glob2
 import ntpath
 
-import requests
+from ngamsPClient import ngamsPClient
+from urlparse import urlparse
 import numpy
 
-# getListIndex()
-######################
-# Iterates through a list, looking at a particular column (col).
-# If a value (val) is found, returns the row index in the list.
-# ARGS:
-# list 		- t
-# col 		- the column to look through
-# val 		- the value to look for
-# RETURN:
-# index of val, if found. Else -1.
-######################
+"""
+getListIndex()
+-----------------------
+Iterates through a list, looking at a particular column (col).
+If a value (val) is found, returns the row index in the list.
+
+ARGS:
+list 		- t
+col 		- the column to look through
+val 		- the value to look for
+
+RETURN:
+index of val, if found. Else -1.
+"""
 def getListIndex(list,col,val):
 	for i in range(len(list)):
 		if list[i][col] == val:
 			return i
 	return -1
 
-# pathEntryMap()
-######################
-# Takes the FS database and returns a map of
-# file paths to file info in the database.
-# ARGS:
-# mountDir 	- the directory the files are in
-# con 		- a connection to the sqlite3 database
-# RETURN:
-# map, where key = file_path and value = file info.
-######################
+"""
+pathEntryMap()
+-----------------------
+Takes the FS database and returns a map of
+file paths to file info in the database.
+
+ARGS:
+mountDir 	- the directory the files are in
+con 		- a connection to the sqlite3 database
+
+RETURN:
+map, where key = file_path and value = file info.
+"""
 def pathEntryMap(mountDir, con):
 	# get database entries
 	cur = con.cursor()
@@ -58,27 +65,34 @@ def pathEntryMap(mountDir, con):
 		maps[path] = {'filename':entry[1],'parent_id':entry[2],'server_loc':entry[3]}	# add path to mapping
 	return maps
 
-# postFS()
-######################
-# Posts a FS database, as well as the files, to a NGAS server.
-# Will delete the raw_data and data_list tables from the FS database
-# when upload is successful.
-# ARGS:
-# sLoc 		- server address string (e.g. "http://ec2-54-152-35-198.compute-1.amazonaws.com:7777/")
-# 				String should contain the trailing '/'.
-# fs_id 	- path to FS database sqlite3 file.
-# mountDir 	- path to mount location of FS.
-# options	- options.
-#				"-f" force upload of files.
-#				"-v" print server's response for each upload.
-# RETURN:
-######################
+"""
+postFS()
+-----------------------
+Posts a FS database, as well as the files, to a NGAS server.
+Will delete the raw_data and data_list tables from the FS database
+when upload is successful.
+
+ARGS:
+sLoc 		- server address string (e.g. "http://ec2-54-152-35-198.compute-1.amazonaws.com:7777/")
+				String should contain the trailing '/'.
+fs_id 		- path to FS database sqlite3 file.
+mountDir 	- path to mount location of FS.
+options		- options.
+				"-f" force upload of files.
+				"-v" print server's response for each upload.
+
+RETURN:
+"""
 def postFS(sLoc, fs_id, mountDir, *options):
 
 	# check if mount dir exists
 	if not ntpath.isdir(mountDir):
 		print "ERROR: Directory " + mountDir + " does not exist!"
 		return 1
+
+	# check for the '.sqlite' extension on fs_id
+	if not fs_id.endswith('.sqlite'):
+		fs_id = fs_id + ".sqlite"
 
 	# check if database exists
 	con = None
@@ -95,6 +109,7 @@ def postFS(sLoc, fs_id, mountDir, *options):
 	cur = con.cursor()
 	cur.execute("DELETE FROM raw_data")
 	cur.execute("DELETE FROM data_list")
+	cur.execute("VACUUM") # removes free space left behind from DELETE commands
 	con.commit()
 
 	# upload database file
@@ -104,53 +119,71 @@ def postFS(sLoc, fs_id, mountDir, *options):
 	# close sqlite3 db connection
 	con.close()
 
-# postFile()
-######################
-# Posts a single file to a NGAS server.
-# Uploads even if the file exists on NGAS already.
-# ARGS:
-# sLoc 		- server address string (e.g. "http://ec2-54-152-35-198.compute-1.amazonaws.com:7777/")
-# 				String should contain the trailing '/'.
-# path 		- relative path to the file.
-# options	- options
-#				"-v" print server's response.
-# RETURN:
-######################
-def postFile(sLoc, path, *options):
-	# get options
-	verbose = "-v" in options
+"""
+postFile()
+-----------------------
+Posts a single file to a NGAS server.
+Uploads even if the file exists on NGAS already.
 
-	# send POST request to upload file, and get response.
-	filename = ntpath.basename(path)
-	response = requests.post(sLoc + "ARCHIVE", headers={"Content-type":"application/octet-stream",
-		"Content-Disposition":"filename="+filename},
-		files={filename: open(path, mode='rb')})
+ARGS:
+sLoc 		- server address string (e.g. "http://ec2-54-152-35-198.compute-1.amazonaws.com:7777/")
+				String should contain the trailing '/'.
+path 		- relative path to the file.
+options		- options
+				"-v" print server's response.
+
+RETURN:
+"""
+def postFile(sLoc, path, *options):
+
+	# get host and port
+	o = urlparse(sLoc)
+	host = o.hostname
+	port = o.port
+
+	# upload file using ngamsPClient
+	client = ngamsPClient.ngamsPClient(host, port)	# should the function be passed this instead?
+	status = client.archive(path, mimeType="application/octet-stream")
 
 	# print response (if verbose)
-	if verbose:
-		print response.text
+	if "-v" in options:
+		print status.getMessage()
 
-# postFiles()
-######################
-# Posts multiple files from a FS mount to a NGAS server.
-# Will select certain files to upload based on <patterns>.
-# Will only upload files that do not already exist on the server.
-# ARGS:
-# sLoc 		- server address string (e.g. "http://ec2-54-152-35-198.compute-1.amazonaws.com:7777/")
-# 				String should contain the trailing '/'.
-# fs_id 	- path to FS database sqlite3 file.
-# mountDir 	- the directory the files are in
-# patterns	- array of patterns sent to glob2 that specifies what files should be uploaded.
-#				E.g. "file*.txt" - selects all files that start with 'file' and end with '.txt'.
-#				"**/*.txt" - selects all text files recursively.
-# options	- options
-#				"-f" force upload of files.
-#				"-v" print server's response for each upload.
-# RETURN:
-# NOTE:
-# currently does not check if local files share an ID with a file on the server.
-# If a local file has the same ID as a server file, the file is still uploaded.
-######################
+"""
+postFiles()
+-----------------------
+Posts multiple files from a FS mount to a NGAS server.
+Will select certain files to upload based on <patterns>.
+Will only upload files that do not already exist on the server.
+
+ARGS:
+sLoc 		- server address string (e.g. "http://ec2-54-152-35-198.compute-1.amazonaws.com:7777/")
+				String should contain the trailing '/'.
+fs_id 		- path to FS database sqlite3 file.
+mountDir 	- the directory the files are in
+patterns	- array of patterns sent to glob2 that specifies what files should be uploaded.
+				E.g. "file*.txt" - selects all files that start with 'file' and end with '.txt'.
+				"**/*.txt" - selects all text files recursively.
+options		- options
+				"-f" force upload of files.
+				"-v" print server's response for each upload.
+
+RETURN:
+
+NOTE:
+currently does not check if local files share an ID with a file on the server.
+If a local file has the same ID as a server file, the file is still uploaded.
+
+USE CASES:
++ upload file1.txt, where file1.txt does not exist on server, but exists in FS.
+- should upload file1.txt and change the server_loc column in the FS to the server it was uploaded to.
+
++ upload file1.txt, where file1.txt has an entry under server_loc in the FS.
+- file1.txt is ignored, as it already exists on a server.
+
++ upload file1.txt, where the file has no server_loc entry, but the file exists on the server.
+- uploads file1.txt anyway, because its likely not the same file.
+"""
 def postFiles(sLoc, fs_id, mountDir, patterns, *options):	#ADD option for forced upload
 
 	# get flags
@@ -161,6 +194,10 @@ def postFiles(sLoc, fs_id, mountDir, patterns, *options):	#ADD option for forced
 		print "ERROR: Directory " + mountDir + " does not exist!"
 		return 1
 
+	# check for the '.sqlite' extension on fs_id
+	if not fs_id.endswith('.sqlite'):
+		fs_id = fs_id + ".sqlite"
+
 	# check if database exists
 	con = None
 	if ntpath.isfile(fs_id):
@@ -168,27 +205,27 @@ def postFiles(sLoc, fs_id, mountDir, patterns, *options):	#ADD option for forced
 	else:
 		print "ERROR: Database doesn't exist!"
 		return 1
-	cur = con.cursor()
 
-	# get path to entry map
+	# map filepaths to info about the files
 	pathEntry = pathEntryMap(mountDir, con)
 
-	# convert patterns to a list
+	# convert <patterns> to a list
 	if not isinstance(patterns, list):
 		patterns = [patterns]
 
-	# construct array containing distinct paths.
-	paths = []
+	# construct set of paths captured by <patterns>
+	paths = set()
 	for pattern in patterns:
 		tempPaths = glob2.glob(mountDir + "/" + pattern)
-		paths = paths + list(set(tempPaths)-set(paths))
+		paths = paths.union(set(tempPaths))
 
 	# iterate through paths, and upload files
+	cur = con.cursor()
 	uploadCount = 0
 	for path in paths:
 		if ntpath.isfile(path):
 
-			# get entry details
+			# get entry details (this seems kind of dumb, maybe the sql database should contain path?)
 			entry = pathEntry[path]
 
 			# check whether the file should be uploaded
