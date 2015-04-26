@@ -3,7 +3,7 @@
 import logging
 
 from collections import defaultdict
-from errno import ENOENT
+from errno import ENOENT, ENOATTR
 from stat import S_IFDIR, S_IFLNK, S_IFREG
 from sys import argv, exit
 from time import time
@@ -31,7 +31,8 @@ class File(SQLObject):
     st_uid = IntCol(notNone=False)
     st_gid = IntCol(notNone=False)
     server_loc = StringCol(notNone=False)
-    data = BLOBCol(notNone=False)   # possibly split this
+    attrs = PickleCol(notNone=False)
+    data = BLOBCol(notNone=False)   # possible set to True (value = "")
     path_index = DatabaseIndex("path")
 
     def _check_download(self):
@@ -65,16 +66,16 @@ class FS(LoggingMixIn, Operations):
             File(path="/", st_mode=(S_IFDIR | 0755), st_nlink=2,
                 st_size=0, st_ctime=now, st_mtime=now,
                 st_atime=now, st_uid=0, st_gid=0,
-                server_loc=None, data="")
+                server_loc=None, attrs={}, data="")
             # TEST FILE
             File(path="/pic.png", st_mode=(S_IFREG | 0755), st_nlink=1,
                 st_size=395403, st_ctime=now, st_mtime=now,
                 st_atime=now, st_uid=0, st_gid=0,
-                server_loc="http://ec2-54-152-35-198.compute-1.amazonaws.com:7777/", data="")
+                server_loc="http://ec2-54-152-35-198.compute-1.amazonaws.com:7777/",
+                attrs={}, data="")
 
         self.fd = 0
         self.verbose = True     # print all activities
-        self.attrs = {}         # NOTE: attrs is used by (osx?). Currently not in the SQL database!
 
     def chmod(self, path, mode):
         if self.verbose:
@@ -98,7 +99,7 @@ class FS(LoggingMixIn, Operations):
         File(path=path, st_mode=(S_IFREG | mode), st_nlink=1,
                 st_size=0, st_ctime=now, st_mtime=now,
                 st_atime=now, st_uid=0, st_gid=0,
-                server_loc=None, data="")
+                server_loc=None, attrs={}, data="")
 
         self.fd += 1
         return self.fd
@@ -133,17 +134,14 @@ class FS(LoggingMixIn, Operations):
         if self.verbose:
             print ' '.join(map(str, ["*** getxattr", path, name, position]))
         try:
-            return self.attrs[path][name]
+            return File.selectBy(path=path).getOne().attrs[name]
         except KeyError:
-            return ''
+            raise FuseOSError(ENOATTR)
 
     def listxattr(self, path):
         if self.verbose:
             print ' '.join(map(str, ["*** listxattr", path]))
-        try:
-            return self.attrs[path].keys()
-        except KeyError:
-            return []
+        return File.selectBy(path=path).getOne().attrs.keys()
 
     def mkdir(self, path, mode):
         if self.verbose:
@@ -152,7 +150,7 @@ class FS(LoggingMixIn, Operations):
         File(path=path, st_mode=(S_IFDIR | mode), st_nlink=2,
                 st_size=0, st_ctime=now, st_mtime=now,
                 st_atime=now, st_uid=0, st_gid=0,
-                server_loc=None, data="")
+                server_loc=None, attrs={}, data="")
         File.selectBy(path="/").getOne().st_nlink += 1
 
     def open(self, path, flags):
@@ -186,7 +184,7 @@ class FS(LoggingMixIn, Operations):
         if self.verbose:
             print ' '.join(map(str, ["*** removexattr", path, name]))
         try:
-            del self.attrs[path][name]
+            del File.selectBy(path=path).getOne().attrs[name]
         except KeyError:
             pass        # Should return ENOATTR
 
@@ -205,9 +203,7 @@ class FS(LoggingMixIn, Operations):
         if self.verbose:
             print ' '.join(map(str, ["*** setxattr", path, name, value, options, position]))
         # Ignore options
-        if path not in self.attrs:
-            self.attrs[path] = {}
-        self.attrs[path][name] = value
+        File.selectBy(path=path).getOne().attrs[name] = value
 
     def statfs(self, path):
         if self.verbose:
