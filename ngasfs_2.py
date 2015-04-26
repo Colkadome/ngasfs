@@ -13,6 +13,8 @@ from fuse import FUSE, FuseOSError, Operations, LoggingMixIn
 from sqlobject import *
 import ntpath
 from urllib2 import urlopen, URLError, HTTPError
+import sys
+import os
 
 if not hasattr(__builtins__, 'bytes'):
     bytes = str
@@ -32,7 +34,7 @@ class File(SQLObject):
     st_gid = IntCol(notNone=False)
     server_loc = StringCol(notNone=False)
     attrs = PickleCol(notNone=False)
-    data = BLOBCol(notNone=False)   # possible set to True (value = "")
+    data = BLOBCol(notNone=False)   # possibly set to True (value = "")
     path_index = DatabaseIndex("path")
 
     def _check_download(self):
@@ -53,7 +55,7 @@ class FS(LoggingMixIn, Operations):
             db_name = db_name + ".sqlite"
 
         # connect to SQL database
-        connection_string = 'sqlite:' + db_name
+        connection_string = 'sqlite:' + os.path.realpath(db_name) # uses full path to stop daemon error
         connection = connectionForURI(connection_string)
         sqlhub.processConnection = connection
 
@@ -250,9 +252,16 @@ class FS(LoggingMixIn, Operations):
 
 
 if __name__ == '__main__':
-    if len(argv) != 3:
+    if len(argv) < 3:
         print('usage: %s <mountpoint> <db_name>' % argv[0])
         exit(1)
 
+    foreground = False # DOES NOT WORK if file needs to be downloaded. ??
+    if "-f" in argv:
+        foreground = True
+
+    sys.stdout = open("out.txt", "a", 0)
+    sys.stderr = open("err.txt", "a", 0)
+
     logging.getLogger().setLevel(logging.DEBUG)
-    fuse = FUSE(FS(argv[2]), argv[1], foreground=True)
+    fuse = FUSE(FS(argv[2]), argv[1], foreground=foreground)
