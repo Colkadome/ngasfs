@@ -10,170 +10,253 @@ from time import time
 
 from fuse import FUSE, FuseOSError, Operations, LoggingMixIn
 
+from sqlobject import *
+import ntpath
+from urllib2 import urlopen, URLError, HTTPError
+
 if not hasattr(__builtins__, 'bytes'):
     bytes = str
 
-class Memory(LoggingMixIn, Operations):
+class File(SQLObject):
+    """
+    File SQL column.
+    """
+    path = UnicodeCol(notNone=True)
+    st_mode = IntCol(notNone=False)
+    st_nlink = IntCol(notNone=False)
+    st_size = IntCol(notNone=False)
+    st_ctime = FloatCol(notNone=False)
+    st_mtime = FloatCol(notNone=False)
+    st_atime = FloatCol(notNone=False)
+    st_uid = IntCol(notNone=False)
+    st_gid = IntCol(notNone=False)
+    server_loc = StringCol(notNone=False)
+    data = BLOBCol(notNone=False)   # possibly split this
+    path_index = DatabaseIndex("path")
+
+    def _check_download(self):
+        if not self.data and self.server_loc:
+            print "=== DOWNLOADING " + self.path
+            url = self.server_loc + "RETRIEVE?file_id=" + ntpath.basename(self.path)
+            con = urlopen(url)
+            self.data = con.read()
+
+
+class FS(LoggingMixIn, Operations):
     'Example memory filesystem. Supports only one level of files.'
 
-    def __init__(self):
-        self.files = {}
-        self.data = defaultdict(bytes)
+    def __init__(self, db_name):
+
+        # check for the '.sqlite' extension on db_path
+        if not db_name.endswith('.sqlite'):
+            db_name = db_name + ".sqlite"
+
+        # connect to SQL database
+        connection_string = 'sqlite:' + db_name
+        connection = connectionForURI(connection_string)
+        sqlhub.processConnection = connection
+
+        # create tables
+        File.createTable(ifNotExists=True)
+
+        # create root entry (if not exists)
+        now = time()
+        if File.select().count() == 0:
+            File(path="/", st_mode=(S_IFDIR | 0755), st_nlink=2,
+                st_size=0, st_ctime=now, st_mtime=now,
+                st_atime=now, st_uid=0, st_gid=0,
+                server_loc=None, data="")
+            # TEST FILE
+            File(path="/pic.png", st_mode=(S_IFREG | 0755), st_nlink=1,
+                st_size=395403, st_ctime=now, st_mtime=now,
+                st_atime=now, st_uid=0, st_gid=0,
+                server_loc="http://ec2-54-152-35-198.compute-1.amazonaws.com:7777/", data="")
+
         self.fd = 0
         self.verbose = True     # print all activities
-        now = time()
-        self.files['/'] = dict(st_mode=(S_IFDIR | 0755), st_ctime=now,
-                               st_mtime=now, st_atime=now, st_nlink=2)
+        self.attrs = {}         # NOTE: attrs is used by (osx?). Currently not in the SQL database!
 
     def chmod(self, path, mode):
         if self.verbose:
             print ' '.join(map(str, ["*** chmod", path, mode]))
-        self.files[path]['st_mode'] &= 0770000
-        self.files[path]['st_mode'] |= mode
+        f = File.selectBy(path = path).getOne()
+        f.st_mode &= 0770000
+        f.st_mode |= mode
         return 0
 
     def chown(self, path, uid, gid):
         if self.verbose:
             print ' '.join(map(str, ["*** chown", path, uid, gid]))
-        self.files[path]['st_uid'] = uid
-        self.files[path]['st_gid'] = gid
+        f = File.selectBy(path = path).getOne()
+        f.st_uid = uid
+        f.st_gid = gid
 
     def create(self, path, mode):
         if self.verbose:
-            print ' '.join(map(str, ["*** chown", path, uid, gid]))
-        self.files[path] = dict(st_mode=(S_IFREG | mode), st_nlink=1,
-                                st_size=0, st_ctime=time(), st_mtime=time(),
-                                st_atime=time())
+            print ' '.join(map(str, ["*** create", path, mode]))
+        now = time()
+        File(path=path, st_mode=(S_IFREG | mode), st_nlink=1,
+                st_size=0, st_ctime=now, st_mtime=now,
+                st_atime=now, st_uid=0, st_gid=0,
+                server_loc=None, data="")
 
         self.fd += 1
         return self.fd
 
     def getattr(self, path, fh=None):
         if self.verbose:
-            print ' '.join(map(str, ["*** chown", path, uid, gid]))
-        if path not in self.files:
+            print ' '.join(map(str, ["*** getattr", path, fh]))
+        try:
+            f = File.selectBy(path = path).getOne()
+            attrs = {}
+            if f.st_mode != None:
+                attrs["st_mode"] = f.st_mode
+            if f.st_nlink != None:
+                attrs["st_nlink"] = f.st_nlink
+            if f.st_size != None:
+                attrs["st_size"] = f.st_size
+            if f.st_ctime != None:
+                attrs["st_ctime"] = f.st_ctime
+            if f.st_mtime != None:
+                attrs["st_mtime"] = f.st_mtime
+            if f.st_atime != None:
+                attrs["st_atime"] = f.st_atime
+            if f.st_uid != None:
+                attrs["st_uid"] = f.st_uid
+            if f.st_gid != None:
+                attrs["st_gid"] = f.st_gid
+            return attrs
+        except SQLObjectNotFound:
             raise FuseOSError(ENOENT)
-
-        return self.files[path]
 
     def getxattr(self, path, name, position=0):
         if self.verbose:
-            print ' '.join(map(str, ["*** chown", path, uid, gid]))
-        attrs = self.files[path].get('attrs', {})
-
+            print ' '.join(map(str, ["*** getxattr", path, name, position]))
         try:
-            return attrs[name]
+            return self.attrs[path][name]
         except KeyError:
-            return ''       # Should return ENOATTR
+            return ''
 
     def listxattr(self, path):
         if self.verbose:
-            print ' '.join(map(str, ["*** chown", path, uid, gid]))
-        attrs = self.files[path].get('attrs', {})
-        return attrs.keys()
+            print ' '.join(map(str, ["*** listxattr", path]))
+        try:
+            return self.attrs[path].keys()
+        except KeyError:
+            return []
 
     def mkdir(self, path, mode):
         if self.verbose:
-            print ' '.join(map(str, ["*** chown", path, uid, gid]))
-        self.files[path] = dict(st_mode=(S_IFDIR | mode), st_nlink=2,
-                                st_size=0, st_ctime=time(), st_mtime=time(),
-                                st_atime=time())
-
-        self.files['/']['st_nlink'] += 1
+            print ' '.join(map(str, ["*** mkdir", path, mode]))
+        now = time()
+        File(path=path, st_mode=(S_IFDIR | mode), st_nlink=2,
+                st_size=0, st_ctime=now, st_mtime=now,
+                st_atime=now, st_uid=0, st_gid=0,
+                server_loc=None, data="")
+        File.selectBy(path="/").getOne().st_nlink += 1
 
     def open(self, path, flags):
         if self.verbose:
-            print ' '.join(map(str, ["*** chown", path, uid, gid]))
+            print ' '.join(map(str, ["*** open", path, flags]))
         self.fd += 1
         return self.fd
 
     def read(self, path, size, offset, fh):
         if self.verbose:
-            print ' '.join(map(str, ["*** chown", path, uid, gid]))
-        return self.data[path][offset:offset + size]
+            print ' '.join(map(str, ["*** read", path, size, offset, fh]))
+        f = File.selectBy(path=path).getOne()
+        f._check_download()
+        return f.data[offset:offset + size]
 
     def readdir(self, path, fh):
         if self.verbose:
-            print ' '.join(map(str, ["*** chown", path, uid, gid]))
-        return ['.', '..'] + [x[1:] for x in self.files if x != '/']
+            print ' '.join(map(str, ["*** readdir", path, fh]))
+        res = []
+        for f in File.select():
+            if f.path != path and ntpath.dirname(f.path) == path:
+                res.append(ntpath.basename(f.path))
+        return ['.', '..'] + res
 
     def readlink(self, path):
         if self.verbose:
-            print ' '.join(map(str, ["*** chown", path, uid, gid]))
-        return self.data[path]
+            print ' '.join(map(str, ["*** readlink", path]))
+        return File.selectBy(path=path).getOne().data
 
     def removexattr(self, path, name):
         if self.verbose:
-            print ' '.join(map(str, ["*** chown", path, uid, gid]))
-        attrs = self.files[path].get('attrs', {})
-
+            print ' '.join(map(str, ["*** removexattr", path, name]))
         try:
-            del attrs[name]
+            del self.attrs[path][name]
         except KeyError:
             pass        # Should return ENOATTR
 
     def rename(self, old, new):
         if self.verbose:
-            print ' '.join(map(str, ["*** chown", path, uid, gid]))
-        self.files[new] = self.files.pop(old)
+            print ' '.join(map(str, ["*** rename", old, new]))
+        File.selectBy(path=old).getOne().path = new
 
     def rmdir(self, path):
         if self.verbose:
-            print ' '.join(map(str, ["*** chown", path, uid, gid]))
-        self.files.pop(path)
-        self.files['/']['st_nlink'] -= 1
+            print ' '.join(map(str, ["*** rmdir", path]))
+        File.selectBy(path=path).getOne().destroySelf()
+        File.selectBy(path="/").getOne().st_nlink -= 1
 
     def setxattr(self, path, name, value, options, position=0):
         if self.verbose:
-            print ' '.join(map(str, ["*** chown", path, uid, gid]))
+            print ' '.join(map(str, ["*** setxattr", path, name, value, options, position]))
         # Ignore options
-        attrs = self.files[path].setdefault('attrs', {})
-        attrs[name] = value
+        if path not in self.attrs:
+            self.attrs[path] = {}
+        self.attrs[path][name] = value
 
     def statfs(self, path):
         if self.verbose:
-            print ' '.join(map(str, ["*** chown", path, uid, gid]))
+            print ' '.join(map(str, ["*** statfs", path]))
         return dict(f_bsize=512, f_blocks=4096, f_bavail=2048)
 
     def symlink(self, target, source):
         if self.verbose:
-            print ' '.join(map(str, ["*** chown", path, uid, gid]))
-        self.files[target] = dict(st_mode=(S_IFLNK | 0777), st_nlink=1,
-                                  st_size=len(source))
-
-        self.data[target] = source
+            print ' '.join(map(str, ["*** symlink", target, source]))
+        f = File.selectBy(path=target).getOne()
+        f.st_mode = (S_IFLNK | 0777)
+        f.st_nlink = 1
+        f.st_size = len(source)
+        f.data = source
 
     def truncate(self, path, length, fh=None):
         if self.verbose:
-            print ' '.join(map(str, ["*** chown", path, uid, gid]))
-        self.data[path] = self.data[path][:length]
-        self.files[path]['st_size'] = length
+            print ' '.join(map(str, ["*** truncate", path, length, fh]))
+        f = File.selectBy(path=path).getOne()
+        f.data = f.data[:length]
+        f.st_size = length
 
     def unlink(self, path):
         if self.verbose:
-            print ' '.join(map(str, ["*** chown", path, uid, gid]))
-        self.files.pop(path)
+            print ' '.join(map(str, ["*** unlink", path]))
+        File.selectBy(path=path).getOne().destroySelf()
 
     def utimens(self, path, times=None):
         if self.verbose:
-            print ' '.join(map(str, ["*** chown", path, uid, gid]))
+            print ' '.join(map(str, ["*** utimens", path, times]))
         now = time()
         atime, mtime = times if times else (now, now)
-        self.files[path]['st_atime'] = atime
-        self.files[path]['st_mtime'] = mtime
+        f = File.selectBy(path=path).getOne()
+        f.st_atime = atime
+        f.st_mtime = mtime
 
     def write(self, path, data, offset, fh):
         if self.verbose:
-            print ' '.join(map(str, ["*** chown", path, uid, gid]))
-        self.data[path] = self.data[path][:offset] + data
-        self.files[path]['st_size'] = len(self.data[path])
+            print ' '.join(map(str, ["*** write", path, offset, fh]))
+        f = File.selectBy(path=path).getOne()
+        f.data = f.data[:offset] + data
+        f.st_size = len(f.data)
         return len(data)
 
 
 if __name__ == '__main__':
-    if len(argv) != 2:
-        print('usage: %s <mountpoint>' % argv[0])
+    if len(argv) != 3:
+        print('usage: %s <mountpoint> <db_name>' % argv[0])
         exit(1)
 
     logging.getLogger().setLevel(logging.DEBUG)
-    fuse = FUSE(Memory(), argv[1], foreground=True)
+    fuse = FUSE(FS(argv[2]), argv[1], foreground=True)

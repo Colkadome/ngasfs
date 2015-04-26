@@ -711,7 +711,7 @@ class DBDumpFS:
                 urlString = dentry.server_loc + 'RETRIEVE?file_id=' + dentry.filename
                 ht = None
                 ht = urllib2.urlopen(urlString)
-                return ht.read(length)
+                return ht.read(length) # NOPE!!!!!!!! doesnt work for big files!!!
             # No data found, TODO throw error here
             else:
                 raise FileSystemError('Cant find data or server location')
