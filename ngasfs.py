@@ -742,59 +742,36 @@ class DBDumpFS:
         self: object, object(file/directory) that the function was called on.
         path: string, current working directory path.
         """
-        #Create a list of available files
-        T = get_file_list()
-        #Check is file is local
-        #todo this should be changed to check if file has a URL
-        if not (path[1:] in T['col3']):
-            conn = sqlhub.getConnection()
-            trans = conn.transaction()
-            
-            i_num = self.__get_inode(path)
-            inode = Inode.selectBy(inode_num=i_num).orderBy('-rev_id')
+        conn = sqlhub.getConnection()
+        trans = conn.transaction()
+        
+        i_num = self.__get_inode(path)
+        inode = Inode.selectBy(inode_num=i_num).orderBy('-rev_id')
 
-            if (stat.S_ISDIR(inode[0].mode)):
-                #search all children and delete them
-                childrenDE = Dentry.selectBy(parent=inode[0])
-                for childDE in childrenDE:
-                    self.remove(path + '/' + childDE.filename)
+        if (stat.S_ISDIR(inode[0].mode)):
+            #search all children and delete them
+            childrenDE = Dentry.selectBy(parent=inode[0])
+            for childDE in childrenDE:
+                self.remove(path + '/' + childDE.filename)
 
 
-            if path in self.__openfiles:
-                self.__openfiles[path].rm()
-                while not self.__openfiles[path].is_close():
-                    self.__openfiles[path].close()
-                del self.__openfiles[path]
-            else:
-                #delete file and finish
-                dataList = DataList.selectBy(parent=inode[0])
-                for dl in dataList:
-                    dl.destroySelf()
-                #TODO revise parent?
-                dentry = Dentry.selectBy(inode_num = i_num)
-                for de in dentry:
-                    de.destroySelf()
-                for i in inode:
-                    i.destroySelf()
-            trans.commit()
-                
-        #If not local then file is from server
+        if path in self.__openfiles:
+            self.__openfiles[path].rm()
+            while not self.__openfiles[path].is_close():
+                self.__openfiles[path].close()
+            del self.__openfiles[path]
         else:
-            #TODO consider adding warning: file not removed from server
-            conn = sqlhub.getConnection()
-            trans = conn.transaction() #TODO do I need to do this?
-            if path in self.__openfiles:
-                self.__openfiles[path].rm()
-
-            i_num = self.__get_inode(path)
-            inode = Inode.selectBy(inode_num=i_num)
+            #delete file and finish
+            dataList = DataList.selectBy(parent=inode[0])
+            for dl in dataList:
+                dl.destroySelf()
+            #TODO revise parent?
             dentry = Dentry.selectBy(inode_num = i_num)
-            
-            for i in inode:
-                i.destroySelf()
             for de in dentry:
                 de.destroySelf()
-            trans.commit() 
+            for i in inode:
+                i.destroySelf()
+        trans.commit() 
 
               
     def rename(self, oldPath, newPath):
