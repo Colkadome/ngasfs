@@ -20,7 +20,7 @@ if not hasattr(__builtins__, 'bytes'):
     bytes = str
 
 # block size
-BLOCK_SIZE = 4096
+BLOCK_SIZE = 65536
 
 """
 File column in SQL database.
@@ -271,7 +271,7 @@ class FS(LoggingMixIn, Operations):
     def statfs(self, path):
         if self.verbose:
             print ' '.join(map(str, ["*** statfs", path]))
-        return dict(f_bsize=512, f_blocks=4096, f_bavail=2048)
+        return dict(f_bsize=65536, f_blocks=4096, f_bavail=2048)
 
     def symlink(self, target, source):
         if self.verbose:
