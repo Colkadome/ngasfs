@@ -11,6 +11,7 @@ from time import time
 from fuse import FUSE, FuseOSError, Operations, LoggingMixIn
 
 from sqlobject import *
+import ntpath
 import urllib2
 from urllib2 import urlopen, URLError, HTTPError
 import sys
@@ -19,20 +20,21 @@ import os
 if not hasattr(__builtins__, 'bytes'):
     bytes = str
 
-"""
-File column in SQL database.
-"""
 class File(SQLObject):
-    name = UnicodeCol(notNone=True) # basename (eg. "file1.txt")
-    path = UnicodeCol(notNone=True) # the path to the file's directiory (e. "m/n/o")
-    st_mode = IntCol(notNone=True)
-    st_nlink = IntCol(notNone=True)
-    st_size = IntCol(notNone=True)
-    st_ctime = FloatCol(notNone=True)
-    st_mtime = FloatCol(notNone=True)
-    st_atime = FloatCol(notNone=True)
-    st_uid = IntCol(notNone=True)
-    st_gid = IntCol(notNone=True)
+    """
+    File SQL column.
+    """
+    #filename = UnicodeCol(notNone=True)
+    path = UnicodeCol(notNone=True)
+    # create file column?
+    st_mode = IntCol(notNone=False)
+    st_nlink = IntCol(notNone=False)
+    st_size = IntCol(notNone=False)
+    st_ctime = FloatCol(notNone=False)
+    st_mtime = FloatCol(notNone=False)
+    st_atime = FloatCol(notNone=False)
+    st_uid = IntCol(notNone=False)
+    st_gid = IntCol(notNone=False)
     server_loc = StringCol(notNone=False)
     attrs = PickleCol(notNone=False)
     data = BLOBCol(notNone=False)   # possibly set to True (value = "")
@@ -40,8 +42,8 @@ class File(SQLObject):
 
     def _check_download(self):
         if not self.data and self.server_loc:
-            print "--- DOWNLOADING to " + self._fullpath()
-            url = self.server_loc + "RETRIEVE?file_id=" + self.name
+            print "--- DOWNLOADING " + self.path
+            url = self.server_loc + "RETRIEVE?file_id=" + ntpath.basename(self.path)
             try:
                 con = urlopen(url)
                 self.data = con.read()
@@ -50,49 +52,9 @@ class File(SQLObject):
             except URLError, e:
                 print "URL Error:", e.reason, url
 
-    def _fullpath(self):
-        return os.path.normpath(self.path + "/" + self.name)
 
-    def _getData(self, size, offset):
-        print "here"
-
-
-class Data(SQLObject):
-    file_id = ForeignKey("File", notNone=True)
-    series = IntCol(notNone=True)
-    data = BLOBCol(notNone=False)
-
-"""
-Functions for handling paths
-"""
-
-def getFileName(path):
-    return os.path.basename(path)
-
-def getFilePath(path):
-    return os.path.dirname(path)
-
-"""
-Functions to help get SQL entries
-"""
-
-def getParentFromPath(path):
-    par = getFilePath(path)
-    try:
-        return File.selectBy(path=getFilePath(par), name=getFileName(par)).getOne()
-    except SQLObjectNotFound:
-        raise FuseOSError(ENOENT)
-
-def getFileFromPath(path):
-    try:
-        return File.selectBy(path=getFilePath(path), name=getFileName(path)).getOne()
-    except SQLObjectNotFound:
-        raise FuseOSError(ENOENT)
-
-"""
-A SQL-based filesystem.
-"""
 class FS(LoggingMixIn, Operations):
+    'Example memory filesystem. Supports only one level of files.'
 
     def __init__(self, db_name):
 
@@ -107,17 +69,16 @@ class FS(LoggingMixIn, Operations):
 
         # create tables
         File.createTable(ifNotExists=True)
-        Data.createTable(ifNotExists=True)
 
         # create root entry (if not exists)
         now = time()
         if File.select().count() == 0:
-            File(name="", path="/", st_mode=(S_IFDIR | 0755), st_nlink=2,
+            File(path="/", st_mode=(S_IFDIR | 0755), st_nlink=2,
                 st_size=0, st_ctime=now, st_mtime=now,
                 st_atime=now, st_uid=0, st_gid=0,
                 server_loc=None, attrs={}, data="")
             # TEST FILE
-            File(name="pic.png", path="/", st_mode=(S_IFREG | 0755), st_nlink=1,
+            File(path="/pic.png", st_mode=(S_IFREG | 0755), st_nlink=1,
                 st_size=395403, st_ctime=now, st_mtime=now,
                 st_atime=now, st_uid=0, st_gid=0,
                 server_loc="http://ec2-54-152-35-198.compute-1.amazonaws.com:7777/",
@@ -129,7 +90,7 @@ class FS(LoggingMixIn, Operations):
     def chmod(self, path, mode):
         if self.verbose:
             print ' '.join(map(str, ["*** chmod", path, mode]))
-        f = getFileFromPath(path)
+        f = File.selectBy(path = path).getOne()
         f.st_mode &= 0770000
         f.st_mode |= mode
         return 0
@@ -137,7 +98,7 @@ class FS(LoggingMixIn, Operations):
     def chown(self, path, uid, gid):
         if self.verbose:
             print ' '.join(map(str, ["*** chown", path, uid, gid]))
-        f = getFileFromPath(path)
+        f = File.selectBy(path = path).getOne()
         f.st_uid = uid
         f.st_gid = gid
 
@@ -145,50 +106,62 @@ class FS(LoggingMixIn, Operations):
         if self.verbose:
             print ' '.join(map(str, ["*** create", path, mode]))
         now = time()
-        File(name=getFileName(path), path=getFilePath(path), st_mode=(S_IFREG | mode), st_nlink=1,
+        File(path=path, st_mode=(S_IFREG | mode), st_nlink=1,
                 st_size=0, st_ctime=now, st_mtime=now,
                 st_atime=now, st_uid=0, st_gid=0,
                 server_loc=None, attrs={}, data="")
+
         self.fd += 1
         return self.fd
 
     def getattr(self, path, fh=None):
         if self.verbose:
             print ' '.join(map(str, ["*** getattr", path, fh]))
-        f = getFileFromPath(path)
-        attrs = {}
-        attrs["st_mode"] = f.st_mode
-        attrs["st_nlink"] = f.st_nlink
-        attrs["st_size"] = f.st_size
-        attrs["st_ctime"] = f.st_ctime
-        attrs["st_mtime"] = f.st_mtime
-        attrs["st_atime"] = f.st_atime
-        attrs["st_uid"] = f.st_uid
-        attrs["st_gid"] = f.st_gid
-        return attrs
+        try:
+            f = File.selectBy(path = path).getOne()
+            attrs = {}
+            if f.st_mode != None:
+                attrs["st_mode"] = f.st_mode
+            if f.st_nlink != None:
+                attrs["st_nlink"] = f.st_nlink
+            if f.st_size != None:
+                attrs["st_size"] = f.st_size
+            if f.st_ctime != None:
+                attrs["st_ctime"] = f.st_ctime
+            if f.st_mtime != None:
+                attrs["st_mtime"] = f.st_mtime
+            if f.st_atime != None:
+                attrs["st_atime"] = f.st_atime
+            if f.st_uid != None:
+                attrs["st_uid"] = f.st_uid
+            if f.st_gid != None:
+                attrs["st_gid"] = f.st_gid
+            return attrs
+        except SQLObjectNotFound:
+            raise FuseOSError(ENOENT)
 
     def getxattr(self, path, name, position=0):
         if self.verbose:
             print ' '.join(map(str, ["*** getxattr", path, name, position]))
         try:
-            return getFileFromPath(path).attrs[name]
+            return File.selectBy(path=path).getOne().attrs[name]
         except KeyError:
             raise FuseOSError(ENOATTR)
 
     def listxattr(self, path):
         if self.verbose:
             print ' '.join(map(str, ["*** listxattr", path]))
-        return getFileFromPath(path).attrs.keys()
+        return File.selectBy(path=path).getOne().attrs.keys()
 
     def mkdir(self, path, mode):
         if self.verbose:
             print ' '.join(map(str, ["*** mkdir", path, mode]))
         now = time()
-        File(name=getFileName(path), path=getFilePath(path), st_mode=(S_IFDIR | mode), st_nlink=2,
+        File(path=path, st_mode=(S_IFDIR | mode), st_nlink=2,
                 st_size=0, st_ctime=now, st_mtime=now,
                 st_atime=now, st_uid=0, st_gid=0,
                 server_loc=None, attrs={}, data="")
-        getParentFromPath(path).st_nlink += 1
+        File.selectBy(path=ntpath.dirname(path)).getOne().st_nlink += 1
 
     def open(self, path, flags):
         if self.verbose:
@@ -199,66 +172,52 @@ class FS(LoggingMixIn, Operations):
     def read(self, path, size, offset, fh):
         if self.verbose:
             print ' '.join(map(str, ["*** read", path, size, offset, fh]))
-        f = getFileFromPath(path)
-        #f._check_download() not yet!!!
-        i_start = int(offset / 4096)
-        i_end = int((offset + size) / 4096)
-
-        data = ""
-        for d in Data.selectBy(file_id=f.id).filter(Data.q.series>=i_start).filter(Data.q.series<=i_end).orderBy("series"):
-            s = 0
-            e = 4096
-            if d.series == i_start:
-                s = offset % 4096
-            if d.series == i_end:
-                e = (offset + size) % 4096
-            data += d.data[s:e]
-
-        return data
+        f = File.selectBy(path=path).getOne()
+        f._check_download()
+        return f.data[offset:offset + size]
 
     def readdir(self, path, fh):
         if self.verbose:
             print ' '.join(map(str, ["*** readdir", path, fh]))
         res = []
-        for f in File.selectBy(path=path):
-            if f.name:
-                res.append(f.name)
+        for f in File.select():
+            if f.path != path and ntpath.dirname(f.path) == path:
+                res.append(ntpath.basename(f.path))
         return ['.', '..'] + res
 
     def readlink(self, path):
         if self.verbose:
             print ' '.join(map(str, ["*** readlink", path]))
-        return getFileFromPath(path).data
+        return File.selectBy(path=path).getOne().data
 
     def removexattr(self, path, name):
         if self.verbose:
             print ' '.join(map(str, ["*** removexattr", path, name]))
         try:
-            del getFileFromPath(path).attrs[name]
+            del File.selectBy(path=path).getOne().attrs[name]
         except KeyError:
             pass        # Should return ENOATTR
 
     def rename(self, old, new):
         if self.verbose:
             print ' '.join(map(str, ["*** rename", old, new]))
-        f = getFileFromPath(old)
-        f.name = getFileName(new)
-        f.path = getFilePath(new)
-
+        File.selectBy(path=old).getOne().path = new
 
     def rmdir(self, path):
         if self.verbose:
             print ' '.join(map(str, ["*** rmdir", path]))
-        getFileFromPath(path).destroySelf()
-        for f in File.select(File.q.path.startswith(path)):
+        File.selectBy(path=path).getOne().destroySelf()
+        # delete files inside the directory
+        for f in File.select(File.q.path.startswith(path + "/")):
             f.destroySelf()
-        getParentFromPath(path).st_nlink -= 1
+        # decrement st_nlink
+        File.selectBy(path=ntpath.dirname(path)).getOne().st_nlink -= 1
 
     def setxattr(self, path, name, value, options, position=0):
         if self.verbose:
             print ' '.join(map(str, ["*** setxattr", path, name, value, options, position]))
         # Ignore options
-        getFileFromPath(path).attrs[name] = value
+        File.selectBy(path=path).getOne().attrs[name] = value
 
     def statfs(self, path):
         if self.verbose:
@@ -268,7 +227,7 @@ class FS(LoggingMixIn, Operations):
     def symlink(self, target, source):
         if self.verbose:
             print ' '.join(map(str, ["*** symlink", target, source]))
-        f = getFileFromPath(target)
+        f = File.selectBy(path=target).getOne()
         f.st_mode = (S_IFLNK | 0777)
         f.st_nlink = 1
         f.st_size = len(source)
@@ -277,55 +236,31 @@ class FS(LoggingMixIn, Operations):
     def truncate(self, path, length, fh=None):
         if self.verbose:
             print ' '.join(map(str, ["*** truncate", path, length, fh]))
-        f = getFileFromPath(path)
+        f = File.selectBy(path=path).getOne()
         f.data = f.data[:length]
         f.st_size = length
 
     def unlink(self, path):
         if self.verbose:
             print ' '.join(map(str, ["*** unlink", path]))
-        f = getFileFromPath(path)
-        Data.deleteBy(file_id=f.id)
-        f.destroySelf()
+        File.selectBy(path=path).getOne().destroySelf()
 
     def utimens(self, path, times=None):
         if self.verbose:
             print ' '.join(map(str, ["*** utimens", path, times]))
         now = time()
         atime, mtime = times if times else (now, now)
-        f = getFileFromPath(path)
+        f = File.selectBy(path=path).getOne()
         f.st_atime = atime
         f.st_mtime = mtime
 
     def write(self, path, data, offset, fh):
         if self.verbose:
             print ' '.join(map(str, ["*** write", path, offset, fh]))
-        f = getFileFromPath(path)
-        # Assume 4096 size blocks!!
-        size = len(data)
-        i_start = int(offset / 4096)
-        i_end = int((offset + size) / 4096)
-        write = 0
-
-        entries = list(Data.selectBy(file_id=f.id).filter(Data.q.series>=i_start).filter(Data.q.series<=i_end).orderBy("series"))
-        e_no = 0
-        for i in range(i_start, i_end+1):
-            s = 0
-            e = 4096
-            if i==i_start:
-                s = offset % 4096
-            if i==i_end:
-                e = (offset + size) % 4096
-            to_write = e - s
-            if e_no < len(entries):
-                entries[e_no].data = entries[e_no].data[:s] + data[write:write+to_write] + entries[e_no].data[e:]
-                e_no += 1
-            else:
-                Data(file_id=f.id, series=i, data=data[write:write+to_write])
-            write += to_write
-
-        f.st_size = max(f.st_size, offset + size)
-        return size
+        f = File.selectBy(path=path).getOne()
+        f.data = f.data[:offset] + data
+        f.st_size = len(f.data)
+        return len(data)
 
 
 if __name__ == '__main__':
