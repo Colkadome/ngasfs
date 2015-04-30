@@ -19,6 +19,9 @@ import os
 if not hasattr(__builtins__, 'bytes'):
     bytes = str
 
+# block size
+BLOCK_SIZE = 4096
+
 """
 File column in SQL database.
 """
@@ -33,18 +36,25 @@ class File(SQLObject):
     st_atime = FloatCol(notNone=True)
     st_uid = IntCol(notNone=True)
     st_gid = IntCol(notNone=True)
-    server_loc = StringCol(notNone=False)
     attrs = PickleCol(notNone=False)
-    data = BLOBCol(notNone=False)   # possibly set to True (value = "")
+    server_loc = StringCol(notNone=False)
+    isDownloaded = BoolCol(notNone=True)   # possibly set to True (value = "")
     path_index = DatabaseIndex("path")
 
     def _check_download(self):
-        if not self.data and self.server_loc:
+        if not self.isDownloaded and self.server_loc:
             print "--- DOWNLOADING to " + self._fullpath()
             url = self.server_loc + "RETRIEVE?file_id=" + self.name
             try:
                 con = urlopen(url)
-                self.data = con.read()
+                i = 0
+                while True:
+                    buffer = con.read(BLOCK_SIZE)
+                    if not buffer:
+                        break
+                    Data(file_id = self.id, series = i, data = buffer)
+                    i += 1
+                self.isDownloaded = True
             except HTTPError, e:
                 print "HTTP Error:", e.code, url
             except URLError, e:
@@ -52,9 +62,6 @@ class File(SQLObject):
 
     def _fullpath(self):
         return os.path.normpath(self.path + "/" + self.name)
-
-    def _getData(self, size, offset):
-        print "here"
 
 
 class Data(SQLObject):
@@ -115,17 +122,16 @@ class FS(LoggingMixIn, Operations):
             File(name="", path="/", st_mode=(S_IFDIR | 0755), st_nlink=2,
                 st_size=0, st_ctime=now, st_mtime=now,
                 st_atime=now, st_uid=0, st_gid=0,
-                server_loc=None, attrs={}, data="")
+                server_loc=None, attrs={}, isDownloaded=False)
             # TEST FILE
             File(name="pic.png", path="/", st_mode=(S_IFREG | 0755), st_nlink=1,
                 st_size=395403, st_ctime=now, st_mtime=now,
                 st_atime=now, st_uid=0, st_gid=0,
                 server_loc="http://ec2-54-152-35-198.compute-1.amazonaws.com:7777/",
-                attrs={}, data="")
+                attrs={}, isDownloaded=False)
 
         self.fd = 0
         self.verbose = True     # print all activities
-        self.BLOCK_SIZE = 4096
 
     def chmod(self, path, mode):
         if self.verbose:
@@ -149,7 +155,7 @@ class FS(LoggingMixIn, Operations):
         File(name=getFileName(path), path=getFilePath(path), st_mode=(S_IFREG | mode), st_nlink=1,
                 st_size=0, st_ctime=now, st_mtime=now,
                 st_atime=now, st_uid=0, st_gid=0,
-                server_loc=None, attrs={}, data="")
+                server_loc=None, attrs={}, isDownloaded=False)
         self.fd += 1
         return self.fd
 
@@ -188,7 +194,7 @@ class FS(LoggingMixIn, Operations):
         File(name=getFileName(path), path=getFilePath(path), st_mode=(S_IFDIR | mode), st_nlink=2,
                 st_size=0, st_ctime=now, st_mtime=now,
                 st_atime=now, st_uid=0, st_gid=0,
-                server_loc=None, attrs={}, data="")
+                server_loc=None, attrs={}, isDownloaded=False)
         getParentFromPath(path).st_nlink += 1
 
     def open(self, path, flags):
@@ -201,18 +207,19 @@ class FS(LoggingMixIn, Operations):
         if self.verbose:
             print ' '.join(map(str, ["*** read", path, size, offset, fh]))
         f = getFileFromPath(path)
-        #f._check_download() not yet!!!
-        i_start = int(offset / self.BLOCK_SIZE)
-        i_end = int((offset + size) / self.BLOCK_SIZE)
+        f._check_download() # check for data!
+
+        i_start = int(offset / BLOCK_SIZE)
+        i_end = int((offset + size) / BLOCK_SIZE)
 
         data = ""
         for d in Data.selectBy(file_id=f.id).filter(Data.q.series>=i_start).filter(Data.q.series<=i_end).orderBy("series"):
             s = 0
-            e = self.BLOCK_SIZE
+            e = BLOCK_SIZE
             if d.series == i_start:
-                s = offset % self.BLOCK_SIZE
+                s = offset % BLOCK_SIZE
             if d.series == i_end:
-                e = (offset + size) % self.BLOCK_SIZE
+                e = (offset + size) % BLOCK_SIZE
             data += d.data[s:e]
 
         return data
@@ -229,7 +236,7 @@ class FS(LoggingMixIn, Operations):
     def readlink(self, path):
         if self.verbose:
             print ' '.join(map(str, ["*** readlink", path]))
-        return getFileFromPath(path).data
+        return getFileFromPath(path).data # FIX THIS
 
     def removexattr(self, path, name):
         if self.verbose:
@@ -246,14 +253,14 @@ class FS(LoggingMixIn, Operations):
         f.name = getFileName(new)
         f.path = getFilePath(new)
 
-
     def rmdir(self, path):
         if self.verbose:
             print ' '.join(map(str, ["*** rmdir", path]))
-        getFileFromPath(path).destroySelf()
-        for f in File.select(File.q.path.startswith(path)):
-            f.destroySelf()
-        getParentFromPath(path).st_nlink -= 1
+        if File.select(File.q.path.startswith(path)).count():
+            print "--- " + path + " has contents, was not removed."
+        else:
+            getFileFromPath(path).destroySelf()
+            getParentFromPath(path).st_nlink -= 1
 
     def setxattr(self, path, name, value, options, position=0):
         if self.verbose:
@@ -273,13 +280,13 @@ class FS(LoggingMixIn, Operations):
         f.st_mode = (S_IFLNK | 0777)
         f.st_nlink = 1
         f.st_size = len(source)
-        f.data = source
+        f.data = source # FIX THIS
 
     def truncate(self, path, length, fh=None):
         if self.verbose:
             print ' '.join(map(str, ["*** truncate", path, length, fh]))
         f = getFileFromPath(path)
-        f.data = f.data[:length]
+        f.data = f.data[:length] # FIX THIS
         f.st_size = length
 
     def unlink(self, path):
@@ -302,21 +309,21 @@ class FS(LoggingMixIn, Operations):
         if self.verbose:
             print ' '.join(map(str, ["*** write", path, offset, fh]))
         f = getFileFromPath(path)
-        
+
         size = len(data)
-        i_start = int(offset / self.BLOCK_SIZE)
-        i_end = int((offset + size) / self.BLOCK_SIZE)
+        i_start = int(offset / BLOCK_SIZE)
+        i_end = int((offset + size) / BLOCK_SIZE)
         write = 0
 
         entries = list(Data.selectBy(file_id=f.id).filter(Data.q.series>=i_start).filter(Data.q.series<=i_end).orderBy("series"))
         e_no = 0
         for i in range(i_start, i_end+1):
             s = 0
-            e = self.BLOCK_SIZE
+            e = BLOCK_SIZE
             if i==i_start:
-                s = offset % self.BLOCK_SIZE
+                s = offset % BLOCK_SIZE
             if i==i_end:
-                e = (offset + size) % self.BLOCK_SIZE
+                e = (offset + size) % BLOCK_SIZE
             to_write = e - s
             if e_no < len(entries):
                 entries[e_no].data = entries[e_no].data[:s] + data[write:write+to_write] + entries[e_no].data[e:]
