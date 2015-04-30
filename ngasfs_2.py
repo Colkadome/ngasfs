@@ -125,6 +125,7 @@ class FS(LoggingMixIn, Operations):
 
         self.fd = 0
         self.verbose = True     # print all activities
+        self.BLOCK_SIZE = 4096
 
     def chmod(self, path, mode):
         if self.verbose:
@@ -201,17 +202,17 @@ class FS(LoggingMixIn, Operations):
             print ' '.join(map(str, ["*** read", path, size, offset, fh]))
         f = getFileFromPath(path)
         #f._check_download() not yet!!!
-        i_start = int(offset / 4096)
-        i_end = int((offset + size) / 4096)
+        i_start = int(offset / self.BLOCK_SIZE)
+        i_end = int((offset + size) / self.BLOCK_SIZE)
 
         data = ""
         for d in Data.selectBy(file_id=f.id).filter(Data.q.series>=i_start).filter(Data.q.series<=i_end).orderBy("series"):
             s = 0
-            e = 4096
+            e = self.BLOCK_SIZE
             if d.series == i_start:
-                s = offset % 4096
+                s = offset % self.BLOCK_SIZE
             if d.series == i_end:
-                e = (offset + size) % 4096
+                e = (offset + size) % self.BLOCK_SIZE
             data += d.data[s:e]
 
         return data
@@ -301,21 +302,21 @@ class FS(LoggingMixIn, Operations):
         if self.verbose:
             print ' '.join(map(str, ["*** write", path, offset, fh]))
         f = getFileFromPath(path)
-        # Assume 4096 size blocks!!
+        
         size = len(data)
-        i_start = int(offset / 4096)
-        i_end = int((offset + size) / 4096)
+        i_start = int(offset / self.BLOCK_SIZE)
+        i_end = int((offset + size) / self.BLOCK_SIZE)
         write = 0
 
         entries = list(Data.selectBy(file_id=f.id).filter(Data.q.series>=i_start).filter(Data.q.series<=i_end).orderBy("series"))
         e_no = 0
         for i in range(i_start, i_end+1):
             s = 0
-            e = 4096
+            e = self.BLOCK_SIZE
             if i==i_start:
-                s = offset % 4096
+                s = offset % self.BLOCK_SIZE
             if i==i_end:
-                e = (offset + size) % 4096
+                e = (offset + size) % self.BLOCK_SIZE
             to_write = e - s
             if e_no < len(entries):
                 entries[e_no].data = entries[e_no].data[:s] + data[write:write+to_write] + entries[e_no].data[e:]
