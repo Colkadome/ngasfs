@@ -1,4 +1,3 @@
-import sqlite3 as lite
 import sys
 import atpy
 import time
@@ -6,63 +5,12 @@ import datetime
 import os
 import glob2
 
-from ngamsPClient import ngamsPClient
 from urlparse import urlparse
+from ngamsPClient import ngamsPClient
 import numpy
 
-"""
-getListIndex()
------------------------
-Iterates through a list, looking at a particular column (col).
-If a value (val) is found, returns the row index in the list.
-
-ARGS:
-list 		- t
-col 		- the column to look through
-val 		- the value to look for
-
-RETURN:
-index of val, if found. Else -1.
-"""
-def getListIndex(list,col,val):
-	for i in range(len(list)):
-		if list[i][col] == val:
-			return i
-	return -1
-
-"""
-pathEntryMap()
------------------------
-Takes the FS database and returns a map of
-file paths to file info in the database.
-
-ARGS:
-mountDir 	- the directory the files are in
-con 		- a connection to the sqlite3 database
-
-RETURN:
-map, where key = file_path and value = file info.
-"""
-def pathEntryMap(mountDir, con):
-	# get database entries
-	cur = con.cursor()
-	cur.execute("SELECT max(inode.id), filename, parent_id, server_loc FROM dentry, inode WHERE dentry.inode_num = inode.inode_num GROUP BY filename, parent_id")
-	result = cur.fetchall()
-	# iterate through entries
-	maps = {}
-	for entry in result:
-		path = entry[1]
-		curr = entry	# current entry
-		# move through parent nodes until root is reached
-		while 1:
-			pId = curr[2] # get parent ID
-			if pId==1:	# if the parent is mount directory (id = 1), exit loop
-				break
-			curr = result[getListIndex(result,0,pId)]	# find parent entry, and move to it
-			path = curr[1] + "/" + path	# append parent's name to path
-		path = mountDir + "/" + path # make full path
-		maps[path] = {'filename':entry[1],'parent_id':entry[2],'server_loc':entry[3]}	# add path to mapping
-	return maps
+from sqlobject import *
+from tables import *
 
 """
 postFS()
@@ -81,6 +29,8 @@ options		- options.
 				"-v" print server's response for each upload.
 
 RETURN:
+NOTES:
+this function may only need to use the SQL file. It might be tricky to upload with blocks though.
 """
 def postFS(sLoc, fs_id, mountDir, *options):
 
@@ -93,30 +43,21 @@ def postFS(sLoc, fs_id, mountDir, *options):
 	if not fs_id.endswith('.sqlite'):
 		fs_id = fs_id + ".sqlite"
 
-	# check if database exists
-	con = None
-	if os.path.isfile(fs_id):
-		con = lite.connect(fs_id)
-	else:
-		print "ERROR: Database doesn't exist!"
-		return 1
+	# init DB
+	connection = initDB(fs_id)
 
 	# upload files in mount
 	postFiles(sLoc, fs_id, mountDir, "**", options)
 
-	# Strip database of raw data
-	cur = con.cursor()
-	cur.execute("DELETE FROM raw_data")
-	cur.execute("DELETE FROM data_list")
-	cur.execute("VACUUM") # removes free space left behind from DELETE commands
-	con.commit()
+	# Strip database of data
+	for f in File.select():
+		f.is_downloaded = False
+	Data.deleteMany(None)
+	connection.queryAll("VACUUM")
 
 	# upload database file
 	print "Uploading: " + fs_id
-	postFile(sLoc, fs_id)
-
-	# close sqlite3 db connection
-	con.close()
+	postFile(sLoc, fs_id, options)
 
 """
 postFile()
@@ -198,15 +139,7 @@ def postFiles(sLoc, fs_id, mountDir, patterns, *options):	#ADD option for forced
 		fs_id = fs_id + ".sqlite"
 
 	# check if database exists
-	con = None
-	if os.path.isfile(fs_id):
-		con = lite.connect(fs_id)
-	else:
-		print "ERROR: Database doesn't exist!"
-		return 1
-
-	# map filepaths to info about the files
-	pathEntry = pathEntryMap(mountDir, con)
+	initDB(fs_id)
 
 	# convert <patterns> to a list
 	if not isinstance(patterns, list):
@@ -219,34 +152,24 @@ def postFiles(sLoc, fs_id, mountDir, patterns, *options):	#ADD option for forced
 		paths = paths.union(set(tempPaths))
 
 	# iterate through paths, and upload files
-	cur = con.cursor()
 	uploadCount = 0
 	for path in paths:
 		if os.path.isfile(path):
 
-			# get entry details (this seems kind of dumb, maybe the sql database should contain path?)
-			entry = pathEntry[path]
+			# get the SQL entry
+			path_sql = path.split(mountDir, 1)[1] # strip mountDir from path
+			f = getFileFromPath(path_sql)
 
-			# check whether the file should be uploaded
-			upload = False
-			if forceUpload:
-				upload = True
-			else:
-				# if file is not from a server, upload it
-				if entry['server_loc']==None:
-					upload = True
-
-			# upload the file
-			if upload:
-				print "Uploading: " + path
+			if f.server_loc==None or forceUpload:
+				# upload the file
+				print "Uploading: " + path_sql
 				uploadCount += 1
 				postFile(sLoc, path, options)
-				# update server_loc in DB
-				cur.execute("UPDATE dentry SET server_loc='"+sLoc+"' WHERE filename='"+entry['filename']+"' AND parent_id="+str(entry['parent_id']))
-				con.commit()
+				# update tables for file
+				f.server_loc = sLoc
+				Data.deleteBy(file_id=f.id)
 			else:
-				print "Ignoring: " + path
-	con.close()
+				print "Ignoring: " + path_sql
 
 	# print info for the user
 	if uploadCount > 0:
@@ -260,3 +183,7 @@ if __name__ == "__main__":
 	if len(sys.argv) < 5:
 		print "USAGE: post.py <server_loc> <fs_id> <mount_dir> <patterns> [options]"
 	postFiles(sys.argv[1],sys.argv[2],sys.argv[3],sys.argv[4])
+
+	#if len(sys.argv) < 5:
+	#	print "USAGE: post.py <server_loc> <fs_id> <mount_dir> [options]"
+	#postFS(sys.argv[1], sys.argv[2], sys.argv[3])

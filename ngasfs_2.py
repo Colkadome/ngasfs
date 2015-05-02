@@ -145,6 +145,10 @@ class FS(LoggingMixIn, Operations):
         if self.verbose:
             print ' '.join(map(str, ["*** rename", old, new]))
         f = getFileFromPath(old)
+        # download file
+        f._check_download()
+        f.server_loc = None
+        # rename file
         f.name = getFileName(new)
         f.path = getFilePath(new)
 

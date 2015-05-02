@@ -12,6 +12,7 @@ import os
 
 # block size
 BLOCK_SIZE = 65536
+connection = None
 
 """
 File column in SQL database.
@@ -117,3 +118,4 @@ def initDB(db_name):
             st_atime=now, st_uid=0, st_gid=0,
             server_loc="http://ec2-54-152-35-198.compute-1.amazonaws.com:7777/",
             attrs={}, is_downloaded=False)
+    return connection
