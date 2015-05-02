@@ -60,12 +60,14 @@ def getFiles(sLoc, fs_id, patterns):
                 ignore.add(names[i])
                 uploadCount += 1
 
-                ctime = T[i]['col14'].replace("T", " ")
-                cTime = mktime(datetime.datetime.strptime(ctime, "%Y-%m-%d %H:%M:%S.%f").timetuple())
-                itime = T[i]['col9'].replace("T", " ")
-                iTime = mktime(datetime.datetime.strptime(itime, "%Y-%m-%d %H:%M:%S.%f").timetuple())
+                # get file attributes
+                cTime = mktime(datetime.datetime.strptime(T[i]['col14'].replace("T", " "), "%Y-%m-%d %H:%M:%S.%f").timetuple())
+                iTime = mktime(datetime.datetime.strptime(T[i]['col9'].replace("T", " "), "%Y-%m-%d %H:%M:%S.%f").timetuple())
+                size = T[i]['col6']
+
+                # add file to SQL database
                 File(name=str(names[i]), path="/", st_mode=33060, st_nlink=1,
-                    st_size=0, st_ctime=cTime, st_mtime=iTime,
+                    st_size=size, st_ctime=cTime, st_mtime=iTime,
                     st_atime=iTime, st_uid=0, st_gid=0,
                     server_loc=sLoc, attrs={}, is_downloaded=False)
             else:
