@@ -131,7 +131,7 @@ class FS(LoggingMixIn, Operations):
     def readlink(self, path):
         if self.verbose:
             print ' '.join(map(str, ["*** readlink", path]))
-        return getFileFromPath(path).data # FIX THIS
+        return getFileFromPath(path).attrs["symlink"]
 
     def removexattr(self, path, name):
         if self.verbose:
@@ -145,7 +145,7 @@ class FS(LoggingMixIn, Operations):
         if self.verbose:
             print ' '.join(map(str, ["*** rename", old, new]))
         f = getFileFromPath(old)
-        # download file
+        # download file (rename essentially a copy)
         f._check_download()
         f.server_loc = None
         # rename file
@@ -175,17 +175,26 @@ class FS(LoggingMixIn, Operations):
     def symlink(self, target, source):
         if self.verbose:
             print ' '.join(map(str, ["*** symlink", target, source]))
-        f = getFileFromPath(target)
-        f.st_mode = (S_IFLNK | 0777)
-        f.st_nlink = 1
-        f.st_size = len(source)
-        f.data = source # FIX THIS
+        now = time()
+        source = os.path.abspath(source) # uses full path (source will contain the 'm/' part otherwise)
+        f = File(name=getFileName(target), path=getFilePath(target), st_mode=(S_IFLNK | 0777), st_nlink=1,
+            st_size=len(source), st_ctime=now, st_mtime=now,
+            st_atime=now, st_uid=0, st_gid=0,
+            server_loc=None, attrs={"symlink":source}, is_downloaded=False)
 
     def truncate(self, path, length, fh=None):
         if self.verbose:
             print ' '.join(map(str, ["*** truncate", path, length, fh]))
         f = getFileFromPath(path)
-        f.data = f.data[:length] # FIX THIS
+        i_end = int(length / BLOCK_SIZE)
+
+        if length > 0:
+            Data.deleteMany(where=((Data.q.id==f.id) & (Data.q.series > i_end)))
+            d = Data.selectBy(file_id=f.id, series=i_end).getOne()
+            d.data = d.data[:(length % BLOCK_SIZE)]
+        else:
+            Data.deleteBy(file_id=f.id)
+
         f.st_size = length
 
     def unlink(self, path):
