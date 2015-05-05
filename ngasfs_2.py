@@ -139,7 +139,7 @@ class FS(LoggingMixIn, Operations):
         try:
             del getFileFromPath(path).attrs[name]
         except KeyError:
-            pass        # Should return ENOATTR
+            raise FuseOSError(ENOATTR)
 
     def rename(self, old, new):
         if self.verbose:
