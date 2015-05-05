@@ -1,18 +1,12 @@
 import sys
-import atpy
-import time
-import datetime
 import os
-import glob2
 
 from urlparse import urlparse
-from ngamsPClient import ngamsPClient
-import numpy
-
 from sqlobject import *
 from sqlobject.sqlbuilder import *
-from tables import *
 import httplib
+
+from tables import *
 
 """
 postFS()
@@ -89,7 +83,7 @@ def postFiles(sLoc, dbPath, pattern, *options):	#ADD option for forced upload
 
 	# iterate through matched files, and upload them
 	uploadCount = 0
-	print "-- Matching " + pattern
+	print "-- Matching: " + pattern
 	for f in File.select(LIKE(File.q.name, pattern) & (File.q.id > 1)):
 		if f.server_loc==None or forceUpload:
 			# upload the file
@@ -108,7 +102,7 @@ def postFiles(sLoc, dbPath, pattern, *options):	#ADD option for forced upload
 	if uploadCount > 0:
 		print "-- " + str(uploadCount) + " file(s) successfully uploaded to NGAS."
 	else:
-		print "-- No files were uploaded/found."
+		print "-- No files were uploaded."
 
 """
 postFile_DB()
@@ -203,7 +197,9 @@ def postFile_path(sLoc, filePath, *options):
 	print r.status, r.reason
 	return r.status
 
-
+"""
+Main function
+"""
 if __name__ == "__main__":
 
 	if len(sys.argv) < 4:
