@@ -84,19 +84,19 @@ def postFiles(sLoc, dbPath, pattern, *options):	#ADD option for forced upload
 	# iterate through matched files, and upload them
 	uploadCount = 0
 	print "-- Matching: " + pattern
-	for f in File.select(LIKE(File.q.name, pattern) & (File.q.id > 1)):
-		if f.server_loc==None or forceUpload:
+	for f in File.select(LIKE(File.q.name, pattern) & (File.q.id > 1) & (File.q.st_size > 0)):
+		if (f.server_loc==None or forceUpload):
 			# upload the file
-			print "Uploading: " + f.path + "/" + f.name
+			print "Uploading: " + f._fullpath()
 			uploadCount += 1
 			if postFile_DB(sLoc, f.id, dbPath) == 200:
 				f.server_loc = sLoc
 				f.is_downloaded = False
 				Data.deleteBy(file_id=f.id)
 			else:
-				print "WARNING: " + f.path + "/" + f.name + " was not uploaded!"
+				print "WARNING: " + f._fullpath() + " was not uploaded!"
 		else:
-			print "Ignoring: " + f.path + "/" + f.name
+			print "Ignoring: " + f._fullpath()
 
 	# print info for the user
 	if uploadCount > 0:

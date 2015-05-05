@@ -53,7 +53,10 @@ class File(SQLObject):
                 print "URL Error:", e.reason, url
 
     def _fullpath(self):
-        return os.path.normpath(self.path + "/" + self.name)
+        if self.path == "/":
+            return "/" + self.name
+        else:
+            return self.path + "/" + self.name
 
 
 class Data(SQLObject):
