@@ -13,10 +13,10 @@ from fuse import FUSE, FuseOSError, Operations, LoggingMixIn
 from sqlobject import *
 import os
 
+from tables import *
+
 if not hasattr(__builtins__, 'bytes'):
     bytes = str
-
-from tables import *
 
 """
 A SQL-based filesystem.
