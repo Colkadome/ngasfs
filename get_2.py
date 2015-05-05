@@ -38,28 +38,35 @@ def getFiles(sLoc, dbPath, pattern):
     # gather server files using pattern
     print "-- Matching: " + pattern
     T = atpy.Table(sLoc + 'QUERY?query=files_like&format=list&like='+pattern,type='ascii')[3:]   # get everything past result 3
+    T.sort(order='col4') # sort by file version
+    T = T[::-1] # sort by descending
+
+    # get various columns
     names = T['col3']
+    cTimes = T['col14']
+    iTimes = T['col9']
+    sizes = T['col6']
+    versions = T['col4']
 
     # add entries that are not in DB, or have not been added previously.
     uploadCount = 0
-    for i in range(len(names)):
+    for i in range(len(T)):
         if names[i] not in ignore:
-            print "Adding: " + names[i]
+            print "Adding: " + names[i] + " [" + versions[i] + "]"
             ignore.add(names[i])
             uploadCount += 1
 
-            # get file attributes
-            cTime = mktime(datetime.datetime.strptime(T[i]['col14'].replace("T", " "), "%Y-%m-%d %H:%M:%S.%f").timetuple())
-            iTime = mktime(datetime.datetime.strptime(T[i]['col9'].replace("T", " "), "%Y-%m-%d %H:%M:%S.%f").timetuple())
-            size = T[i]['col6']
+            # get time attributes
+            cTime = mktime(datetime.datetime.strptime(cTimes[i].replace("T", " "), "%Y-%m-%d %H:%M:%S.%f").timetuple())
+            iTime = mktime(datetime.datetime.strptime(iTimes[i].replace("T", " "), "%Y-%m-%d %H:%M:%S.%f").timetuple())
 
             # add file to SQL database
             File(name=str(names[i]), path="/", st_mode=33060, st_nlink=1,
-                st_size=size, st_ctime=cTime, st_mtime=iTime,
+                st_size=sizes[i], st_ctime=cTime, st_mtime=iTime,
                 st_atime=iTime, st_uid=0, st_gid=0,
                 server_loc=sLoc, attrs={}, is_downloaded=False)
         else:
-            print "Ignoring: " + names[i]
+            print "Ignoring: " + names[i] + " [" + versions[i] + "]"
 
     # print info for the user
     if uploadCount > 0:
