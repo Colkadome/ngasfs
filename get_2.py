@@ -72,7 +72,7 @@ def getFiles(sLoc, dbPath, pattern):
     if uploadCount > 0:
         print "-- " + str(uploadCount) + " file(s) successfully added to " + dbPath
     else:
-        print "-- All files exist on " + dbPath
+        print "-- No files added to " + dbPath
 
 """
 downloadFile()
