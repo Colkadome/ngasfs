@@ -35,7 +35,7 @@ class File(SQLObject):
 
     def _check_download(self):
         if not self.is_downloaded and self.server_loc:
-            print "--- DOWNLOADING to " + self._fullpath()
+            print "--- DOWNLOADING to " + self._path()
             url = self.server_loc + "RETRIEVE?file_id=" + self.name
             try:
                 con = urlopen(url)
@@ -52,11 +52,10 @@ class File(SQLObject):
             except URLError, e:
                 print "URL Error:", e.reason, url
 
-    def _fullpath(self):
+    def _path(self):
         if self.path == "/":
             return "/" + self.name
-        else:
-            return self.path + "/" + self.name
+        return self.path + "/" + self.name
 
 
 class Data(SQLObject):
