@@ -37,7 +37,8 @@ def postFS(sLoc, dbPath, *options):
 	connection.queryAll("VACUUM")
 	# upload database file
 	print "Uploading: " + dbPath
-	if postFile_path(sLoc, dbPath, options) != 200:
+	status = postFile_path(sLoc, dbPath, options)
+	if status != 200:
 		print "WARNING: " + dbPath + " was not uploaded!"
 
 """
@@ -86,10 +87,12 @@ def postFiles(sLoc, dbPath, pattern, *options):	#ADD option for forced upload
 	print "-- Matching: " + pattern
 	for f in File.select(LIKE(File.q.name, pattern) & (File.q.id > 1) & (File.q.st_size > 0)):
 		if (f.server_loc==None or forceUpload):
-			# upload the file
+			# print stuff
 			print "Uploading: " + f._path()
 			uploadCount += 1
-			if postFile_DB(sLoc, f.id, dbPath) == 200:
+			# upload the file
+			status = postFile_DB(sLoc, f.id, dbPath)
+			if status == 200:
 				f.server_loc = sLoc
 				f.is_downloaded = False
 				Data.deleteBy(file_id=f.id)
