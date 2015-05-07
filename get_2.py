@@ -11,7 +11,7 @@ from urllib2 import urlopen, URLError, HTTPError
 from tables import *
 
 """
-getFiles()
+getFiles() /ngas.ddns.net
 -----------------------
 Add multiple files to a FS from a NGAS server.
 Will ignore files with the same ID as files in FS.
@@ -30,7 +30,7 @@ def getFiles(sLoc, dbPath, pattern):
     # connect to DB
     initDB(dbPath)
 
-    # connect to DB, create set of all filenames already on FS
+    # create set of all filenames already on FS
     ignore = set()
     for entry in File.select():
         ignore.add(entry.name)

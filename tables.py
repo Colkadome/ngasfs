@@ -33,6 +33,7 @@ class File(SQLObject):
     is_downloaded = BoolCol(notNone=True)   # possibly set to True (value = "")
     path_index = DatabaseIndex("path")
 
+    # DOES NOT WORK WITH DAEMON. The download might have to be done in a separate process
     def _check_download(self):
         if not self.is_downloaded and self.server_loc:
             print "--- DOWNLOADING to " + self._path()
@@ -115,9 +116,11 @@ def initDB(db_name):
             st_atime=now, st_uid=0, st_gid=0,
             server_loc=None, attrs={}, is_downloaded=False)
         # TEST FILE
+        """
         File(name="pic.png", path="/", st_mode=(S_IFREG | 0755), st_nlink=1,
             st_size=395403, st_ctime=now, st_mtime=now,
             st_atime=now, st_uid=0, st_gid=0,
             server_loc="http://ec2-54-152-35-198.compute-1.amazonaws.com:7777/",
             attrs={}, is_downloaded=False)
+        """
     return connection

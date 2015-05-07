@@ -262,3 +262,5 @@ if __name__ == '__main__':
 
     logging.getLogger().setLevel(logging.DEBUG)
     fuse = FUSE(FS(argv[2]), argv[1], foreground=foreground, debug=debug) #daemon_timeout = 10000, entry_timeout = 10000, attr_timeout = 10000)
+    print "Closing Mount"
+    # SYNC function

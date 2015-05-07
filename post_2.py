@@ -74,7 +74,7 @@ USE CASES:
 + upload file1.txt, where the file has no server_loc entry, but the file exists on the server.
 - uploads file1.txt anyway, because its likely not the same file.
 """
-def postFiles(sLoc, dbPath, pattern, *options):	#ADD option for forced upload
+def postFiles(sLoc, dbPath, pattern, *options):	#ADD option for forced upload, ADD option to keep file after upload
 
 	# get flags
 	forceUpload = "-f" in options
@@ -138,7 +138,7 @@ def postFile_DB(sLoc, file_id, dbPath, *options):
 	conn = httplib.HTTPConnection(host+":"+str(port))
 	conn.connect()
 	conn.putrequest('POST', '/ARCHIVE')
-	conn.putheader('Content-type', "application/octet-stream")
+	conn.putheader('Content-type', "application/octet-stream") # check type
 	conn.putheader('Content-disposition', 'attachment; filename="'+f.name+'";')
 	conn.putheader('Content-length', str(f.st_size))
 	conn.putheader('Host', host)
@@ -208,6 +208,8 @@ if __name__ == "__main__":
 	if len(sys.argv) < 4:
 		print "USAGE: post.py <server_loc> <fs_id> <pattern> [options]"
 		exit(1)
+	# use getattr
+	# make symbolic link, sys.argv[0]
 	postFiles(sys.argv[1],sys.argv[2],sys.argv[3])
 
 	#if len(sys.argv) < 5:
