@@ -12,7 +12,6 @@ import os
 
 # block size
 BLOCK_SIZE = 65536
-connection = None
 
 """
 File column in SQL database.
@@ -35,6 +34,11 @@ class File(SQLObject):
 
     # DOES NOT WORK WITH DAEMON. The download might have to be done in a separate process
     def _check_download(self):
+        """
+        >>> dum = _check_download()
+        >>> print dum
+        >>> True
+        """
         if not self.is_downloaded and self.server_loc:
             print "--- DOWNLOADING to " + self._path()
             url = self.server_loc + "RETRIEVE?file_id=" + self.name
