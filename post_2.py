@@ -29,6 +29,9 @@ this function may only need to use the SQL file. It might be tricky to upload wi
 """
 def postFS(sLoc, dbPath, *options):
 
+	# check for the '.sqlite' extension on db_path
+    if not dbPath.endswith('.sqlite'):
+        dbPath = dbPath + ".sqlite"
 	# init DB
 	connection = initDB(dbPath)
 	# upload files in mount
@@ -74,10 +77,11 @@ USE CASES:
 + upload file1.txt, where the file has no server_loc entry, but the file exists on the server.
 - uploads file1.txt anyway, because its likely not the same file.
 """
-def postFiles(sLoc, dbPath, pattern, *options):	#ADD option for forced upload, ADD option to keep file after upload
+def postFiles(sLoc, dbPath, pattern, *options):
 
 	# get flags
 	forceUpload = "-f" in options
+	keepFiles = "-k" in options
 
 	# check if database exists
 	initDB(dbPath)
@@ -85,8 +89,8 @@ def postFiles(sLoc, dbPath, pattern, *options):	#ADD option for forced upload, A
 	# iterate through matched files, and upload them
 	uploadCount = 0
 	print "-- Matching: " + pattern
-	for f in File.select(LIKE(File.q.name, pattern) & (File.q.id > 1) & (File.q.st_size > 0)):
-		if (f.server_loc==None or forceUpload):
+	for f in File.select(LIKE(File.q.name, pattern) & (File.q.id > 1) & (File.q.st_size > 0) & NOT(File.q.path.startswith("/"+FS_SPECIFIC_PATH))):
+		if f.server_loc==None or forceUpload:
 			# print stuff
 			print "Uploading: " + f._path()
 			uploadCount += 1

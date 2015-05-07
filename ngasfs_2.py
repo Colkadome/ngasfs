@@ -87,9 +87,9 @@ class FS(LoggingMixIn, Operations):
             print ' '.join(map(str, ["*** mkdir", path, mode]))
         now = time()
         File(name=getFileName(path), path=getFilePath(path), st_mode=(S_IFDIR | mode), st_nlink=2,
-                st_size=0, st_ctime=now, st_mtime=now,
-                st_atime=now, st_uid=0, st_gid=0,
-                server_loc=None, attrs={}, is_downloaded=False)
+            st_size=0, st_ctime=now, st_mtime=now,
+            st_atime=now, st_uid=0, st_gid=0,
+            server_loc=None, attrs={}, is_downloaded=False)
         getParentFromPath(path).st_nlink += 1
 
     def open(self, path, flags):
@@ -177,7 +177,7 @@ class FS(LoggingMixIn, Operations):
             print ' '.join(map(str, ["*** symlink", target, source]))
         now = time()
         source = os.path.abspath(source) # uses full path (source will contain the 'm/' part otherwise)
-        f = File(name=getFileName(target), path=getFilePath(target), st_mode=(S_IFLNK | 0777), st_nlink=1,
+        File(name=getFileName(target), path=getFilePath(target), st_mode=(S_IFLNK | 0777), st_nlink=1,
             st_size=len(source), st_ctime=now, st_mtime=now,
             st_atime=now, st_uid=0, st_gid=0,
             server_loc=None, attrs={"symlink":source}, is_downloaded=False)
@@ -263,4 +263,5 @@ if __name__ == '__main__':
     logging.getLogger().setLevel(logging.DEBUG)
     fuse = FUSE(FS(argv[2]), argv[1], foreground=foreground, debug=debug) #daemon_timeout = 10000, entry_timeout = 10000, attr_timeout = 10000)
     print "Closing Mount"
-    # SYNC function
+    # SYNC function here!
+    

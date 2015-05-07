@@ -75,6 +75,15 @@ def getFiles(sLoc, dbPath, pattern):
         print "-- No files added to " + dbPath
 
 """
+downloadFS()
+"""
+def downloadFS(sLoc, db_id, *options):
+    # check for the '.sqlite' extension on db_path
+    if not db_id.endswith('.sqlite'):
+        db_id = db_id + ".sqlite"
+    downloadFile(sLoc, db_id, options)
+
+"""
 downloadFile()
 -----------------------
 Downloads a single file from NGAS server.

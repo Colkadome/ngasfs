@@ -10,8 +10,9 @@ from sqlobject import *
 from urllib2 import urlopen, URLError, HTTPError
 import os
 
-# block size
+# globals
 BLOCK_SIZE = 65536
+FS_SPECIFIC_PATH = "FS_files"
 
 """
 File column in SQL database.
@@ -115,7 +116,11 @@ def initDB(db_name):
     # create root entry (if not exists)
     if File.select().count() == 0:
         now = time()
-        File(name="", path="/", st_mode=(S_IFDIR | 0755), st_nlink=2,
+        File(name="", path="/", st_mode=(S_IFDIR | 0755), st_nlink=3,
+            st_size=0, st_ctime=now, st_mtime=now,
+            st_atime=now, st_uid=0, st_gid=0,
+            server_loc=None, attrs={}, is_downloaded=False)
+        File(name=FS_SPECIFIC_PATH, path="/", st_mode=(S_IFDIR | 0755), st_nlink=2,
             st_size=0, st_ctime=now, st_mtime=now,
             st_atime=now, st_uid=0, st_gid=0,
             server_loc=None, attrs={}, is_downloaded=False)
