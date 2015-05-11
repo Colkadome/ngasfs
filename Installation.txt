@@ -10,6 +10,9 @@ numpy
 astropy
 glob2
 
+(for server):
+Flask
+
 --- Usage:
 
 (stuff here)
