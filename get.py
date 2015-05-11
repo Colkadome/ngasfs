@@ -7,6 +7,7 @@ import os
 import numpy
 from sqlobject import *
 from urllib2 import urlopen, URLError, HTTPError
+import argparse
 
 from tables import *
 
@@ -25,7 +26,7 @@ pattern     - pattern to match NGAS files to.
 
 RETURN:
 """
-def getFiles(sLoc, dbPath, pattern):
+def getFiles(sLoc, dbPath, pattern, *options):
 
     # connect to DB
     initDB(dbPath)
@@ -124,6 +125,13 @@ def downloadFile(sLoc, file_id, *options):
 Main function
 """
 if __name__ == "__main__":
-    if len(sys.argv) < 3:
-        print "USAGE: get.py <server_loc> <fs_id> <pattern>"
-    getFiles(sys.argv[1],sys.argv[2],sys.argv[3])
+
+    # FIGURE OUT HOW TO DO OPTIONAL ARGUMENTS BETTER
+    parser = argparse.ArgumentParser(description="Save file info from NGAS server to FS")
+    parser.add_argument("sLoc", help="The server location", type=str)
+    parser.add_argument("dbPath", help="The path to your FS", type=str)
+    parser.add_argument("pattern", help="SQL pattern to match server files", type=str)
+    parser.add_argument("-v", "--verbose", help="Be verbose", action="store_true")
+    a = parser.parse_args()
+
+    getFiles(a.sLoc, a.dbPath, a.pattern)
