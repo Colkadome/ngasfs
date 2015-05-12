@@ -3,7 +3,15 @@
 import logging
 
 from collections import defaultdict
-from errno import ENOENT, ENOATTR
+
+import errno
+ENOENT = errno.ENOENT
+ENOATTR = errno.ENODATA
+try:
+    ENOATTR = errno.ENOATTR
+except AttributeError:
+    print "Here"
+
 from stat import S_IFDIR, S_IFLNK, S_IFREG
 from sys import argv, exit
 from time import time

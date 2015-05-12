@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-from errno import ENOENT, ENOATTR
+from errno import ENOENT
+
 from time import time
 from stat import S_IFDIR, S_IFREG
 
