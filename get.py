@@ -65,7 +65,7 @@ def getFiles(sLoc, dbPath, pattern, verbose=True):
             File(name=str(names[i]), path="/", st_mode=33060, st_nlink=1,
                 st_size=sizes[i], st_ctime=cTime, st_mtime=iTime,
                 st_atime=iTime, st_uid=0, st_gid=0,
-                server_loc=sLoc, attrs={}, is_downloaded=False)
+                server_loc=sLoc, attrs={}, on_local=False)
         else:
             print "Ignoring: " + names[i] + " [" + versions[i] + "]"
 

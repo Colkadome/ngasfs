@@ -52,7 +52,7 @@ class FS(LoggingMixIn, Operations):
         File(name=getFileName(path), path=getFilePath(path), st_mode=(S_IFREG | mode), st_nlink=1,
                 st_size=0, st_ctime=now, st_mtime=now,
                 st_atime=now, st_uid=0, st_gid=0,
-                server_loc=None, attrs={}, is_downloaded=False)
+                server_loc=None, attrs={}, on_local=True)
         self.fd += 1
         return self.fd
 
@@ -91,7 +91,7 @@ class FS(LoggingMixIn, Operations):
         File(name=getFileName(path), path=getFilePath(path), st_mode=(S_IFDIR | mode), st_nlink=2,
             st_size=0, st_ctime=now, st_mtime=now,
             st_atime=now, st_uid=0, st_gid=0,
-            server_loc=None, attrs={}, is_downloaded=False)
+            server_loc=None, attrs={}, on_local=True)
         getParentFromPath(path).st_nlink += 1
 
     def open(self, path, flags):
@@ -182,7 +182,7 @@ class FS(LoggingMixIn, Operations):
         File(name=getFileName(target), path=getFilePath(target), st_mode=(S_IFLNK | 0777), st_nlink=1,
             st_size=len(source), st_ctime=now, st_mtime=now,
             st_atime=now, st_uid=0, st_gid=0,
-            server_loc=None, attrs={"symlink":source}, is_downloaded=False)
+            server_loc=None, attrs={"symlink":source}, on_local=True)
 
     def truncate(self, path, length, fh=None):
         if self.verbose:

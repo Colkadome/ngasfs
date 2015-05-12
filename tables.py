@@ -30,7 +30,7 @@ class File(SQLObject):
     st_gid = IntCol(notNone=True)
     attrs = PickleCol(notNone=False)
     server_loc = StringCol(notNone=False)
-    is_downloaded = BoolCol(notNone=True)   # possibly set to True (value = "")
+    on_local = BoolCol(notNone=True)   # possibly set to True (value = "")
     path_index = DatabaseIndex("path")
 
     # DOES NOT WORK WITH DAEMON. The download might have to be done in a separate process
@@ -40,7 +40,7 @@ class File(SQLObject):
         >>> print dum
         >>> True
         """
-        if not self.is_downloaded and self.server_loc:
+        if not self.on_local and self.server_loc:
             print "--- DOWNLOADING to " + self._path()
             url = self.server_loc + "RETRIEVE?file_id=" + self.name
             try:
@@ -52,7 +52,7 @@ class File(SQLObject):
                         break
                     Data(file_id = self.id, series = i, data = buffer)
                     i += 1
-                self.is_downloaded = True
+                self.on_local = True
             except HTTPError, e:
                 print "HTTP Error:", e.code, url
             except URLError, e:
@@ -119,17 +119,17 @@ def initDB(db_name):
         File(name="", path="/", st_mode=(S_IFDIR | 0755), st_nlink=3,
             st_size=0, st_ctime=now, st_mtime=now,
             st_atime=now, st_uid=0, st_gid=0,
-            server_loc=None, attrs={}, is_downloaded=False)
+            server_loc=None, attrs={}, on_local=True)
         File(name=FS_SPECIFIC_PATH, path="/", st_mode=(S_IFDIR | 0755), st_nlink=2,
             st_size=0, st_ctime=now, st_mtime=now,
             st_atime=now, st_uid=0, st_gid=0,
-            server_loc=None, attrs={}, is_downloaded=False)
+            server_loc=None, attrs={}, on_local=True)
         # TEST FILE
         """
         File(name="pic.png", path="/", st_mode=(S_IFREG | 0755), st_nlink=1,
             st_size=395403, st_ctime=now, st_mtime=now,
             st_atime=now, st_uid=0, st_gid=0,
             server_loc="http://ec2-54-152-35-198.compute-1.amazonaws.com:7777/",
-            attrs={}, is_downloaded=False)
+            attrs={}, on_local=False)
         """
     return connection

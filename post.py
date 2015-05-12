@@ -5,6 +5,7 @@ from urlparse import urlparse
 from sqlobject import *
 from sqlobject.sqlbuilder import *
 import httplib
+import argparse
 
 from tables import *
 
@@ -77,11 +78,7 @@ USE CASES:
 + upload file1.txt, where the file has no server_loc entry, but the file exists on the server.
 - uploads file1.txt anyway, because its likely not the same file.
 """
-def postFiles(sLoc, dbPath, pattern, *options):
-
-	# get flags
-	forceUpload = "-f" in options
-	keepFiles = "-k" in options
+def postFiles(sLoc, dbPath, pattern, verbose=True, force=False, keep=False):
 
 	# check if database exists
 	initDB(dbPath)
@@ -90,7 +87,7 @@ def postFiles(sLoc, dbPath, pattern, *options):
 	uploadCount = 0
 	print "-- Matching: " + pattern
 	for f in File.select(LIKE(File.q.name, pattern) & (File.q.id > 1) & (File.q.st_size > 0) & NOT(File.q.path.startswith("/"+FS_SPECIFIC_PATH))):
-		if f.server_loc==None or forceUpload:
+		if f.server_loc==None or (force and f.on_local):
 			# print stuff
 			print "Uploading: " + f._path()
 			uploadCount += 1
@@ -98,8 +95,11 @@ def postFiles(sLoc, dbPath, pattern, *options):
 			status = postFile_DB(sLoc, f.id, dbPath)
 			if status == 200:
 				f.server_loc = sLoc
-				f.is_downloaded = False
-				Data.deleteBy(file_id=f.id)
+				if keep:
+					f.on_local = True
+				else:
+					f.on_local = False
+					Data.deleteBy(file_id=f.id)
 			else:
 				print "WARNING: " + f._path() + " was not uploaded!"
 		else:
@@ -209,14 +209,13 @@ Main function
 """
 if __name__ == "__main__":
 
-	if len(sys.argv) < 4:
-		print "USAGE: post.py <server_loc> <fs_id> <pattern> [options]"
-		exit(1)
-	# use getattr
-	# make symbolic link, sys.argv[0]
-	postFiles(sys.argv[1],sys.argv[2],sys.argv[3])
+	parser = argparse.ArgumentParser(description="Post files to NGAS server")
+	parser.add_argument("sLoc", help="The server location", type=str)
+	parser.add_argument("dbPath", help="The path to your FS", type=str)
+	parser.add_argument("pattern", help="SQL pattern to match FS files", type=str)
+	parser.add_argument("-v", "--verbose", help="Be verbose", action="store_true")
+	parser.add_argument("-f", "--force", help="Force upload of files that already exist on server", action="store_true")
+	parser.add_argument("-k", "--keep", help="Keep local file data after upload", action="store_true")
+	a = parser.parse_args()
 
-	#if len(sys.argv) < 5:
-	#	print "USAGE: post.py <server_loc> <fs_id> [options]"
-	#	exit(1)
-	#postFS(sys.argv[1], sys.argv[2])
+	postFiles(a.sLoc, a.dbPath, a.pattern, a.verbose, a.force, a.keep)
