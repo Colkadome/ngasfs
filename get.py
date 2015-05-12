@@ -82,7 +82,7 @@ def downloadFS(sLoc, db_id, verbose=True, force=False):
     # check for the '.sqlite' extension on db_path
     if not db_id.endswith('.sqlite'):
         db_id = db_id + ".sqlite"
-    downloadFile(sLoc, db_id, force)
+    downloadFile(sLoc, db_id, verbose, force)
 
 """
 downloadFile()

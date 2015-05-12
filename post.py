@@ -28,7 +28,7 @@ RETURN:
 NOTES:
 this function may only need to use the SQL file. It might be tricky to upload with blocks though.
 """
-def postFS(sLoc, dbPath, *options):
+def postFS(sLoc, dbPath, verbose=True, force=False, keep=False):
 
 	# check for the '.sqlite' extension on db_path
     if not dbPath.endswith('.sqlite'):
@@ -36,12 +36,12 @@ def postFS(sLoc, dbPath, *options):
 	# init DB
 	connection = initDB(dbPath)
 	# upload files in mount
-	postFiles(sLoc, dbPath, "%", options)
+	postFiles(sLoc, dbPath, "%", verbose, force, keep)
 	# clean data (data is deleted in postFiles)
 	connection.queryAll("VACUUM")
 	# upload database file
 	print "Uploading: " + dbPath
-	status = postFile_path(sLoc, dbPath, options)
+	status = postFile_path(sLoc, dbPath, verbose)
 	if status != 200:
 		print "WARNING: " + dbPath + " was not uploaded!"
 
@@ -87,7 +87,7 @@ def postFiles(sLoc, dbPath, pattern, verbose=True, force=False, keep=False):
 	uploadCount = 0
 	print "-- Matching: " + pattern
 	for f in File.select(LIKE(File.q.name, pattern) & (File.q.id > 1) & (File.q.st_size > 0) & NOT(File.q.path.startswith("/"+FS_SPECIFIC_PATH))):
-		if f.server_loc==None or (force and f.on_local):
+		if (f.server_loc==None or force) and f.on_local:
 			# print stuff
 			print "Uploading: " + f._path()
 			uploadCount += 1
@@ -127,11 +127,16 @@ options		- options
 RETURN:
 status of server's response
 """
-def postFile_DB(sLoc, file_id, dbPath, *options):
+def postFile_DB(sLoc, file_id, dbPath, verbose=True):
 
 	# get file from DB
 	initDB(dbPath)
 	f = File.get(file_id)
+
+	# check if file has local data
+	if not f.on_local:
+		print f._path() + " has no local data!"
+		return 1
 
 	# get host and port
 	o = urlparse(sLoc)
@@ -173,7 +178,7 @@ options		- options
 RETURN:
 status of server's response
 """
-def postFile_path(sLoc, filePath, *options):
+def postFile_path(sLoc, filePath, verbose=True):
 
 	# check if file exists
 	if not os.path.isfile(filePath):
@@ -219,3 +224,4 @@ if __name__ == "__main__":
 	a = parser.parse_args()
 
 	postFiles(a.sLoc, a.dbPath, a.pattern, a.verbose, a.force, a.keep)
+	#postFS(a.sLoc, a.dbPath, a.verbose, a.force, a.keep)
