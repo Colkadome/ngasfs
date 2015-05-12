@@ -93,14 +93,12 @@ def postFiles(sLoc, dbPath, pattern, verbose=True, force=False, keep=False):
 				if not S_ISDIR(f.st_mode):
 					# print stuff
 					print "Uploading: " + f._path()
-					uploadCount += 1
 					# upload the file
 					status = postFile_DB(sLoc, f.id, dbPath)
 					if status == 200:
+						uploadCount += 1
 						f.server_loc = sLoc
-						if keep:
-							f.on_local = True
-						else:
+						if not keep:
 							f.on_local = False
 							Data.deleteBy(file_id=f.id)
 					else:
