@@ -6,6 +6,7 @@ from sqlobject import *
 from sqlobject.sqlbuilder import *
 import httplib
 import argparse
+from stat import S_IFDIR, S_ISDIR
 
 from tables import *
 
@@ -86,24 +87,28 @@ def postFiles(sLoc, dbPath, pattern, verbose=True, force=False, keep=False):
 	# iterate through matched files, and upload them
 	uploadCount = 0
 	print "-- Matching: " + pattern
-	for f in File.select(LIKE(File.q.name, pattern) & (File.q.id > 1) & (File.q.st_size > 0) & NOT(File.q.path.startswith("/"+FS_SPECIFIC_PATH))):
-		if (f.server_loc==None or force) and f.on_local:
-			# print stuff
-			print "Uploading: " + f._path()
-			uploadCount += 1
-			# upload the file
-			status = postFile_DB(sLoc, f.id, dbPath)
-			if status == 200:
-				f.server_loc = sLoc
-				if keep:
-					f.on_local = True
-				else:
-					f.on_local = False
-					Data.deleteBy(file_id=f.id)
+	for f in File.select(LIKE(File.q.name, pattern) & (File.q.id > 1) & NOT(File.q.path.startswith("/"+FS_SPECIFIC_PATH))):
+		if f.server_loc==None or force:
+			if f.on_local:
+				if not S_ISDIR(f.st_mode):
+					# print stuff
+					print "Uploading: " + f._path()
+					uploadCount += 1
+					# upload the file
+					status = postFile_DB(sLoc, f.id, dbPath)
+					if status == 200:
+						f.server_loc = sLoc
+						if keep:
+							f.on_local = True
+						else:
+							f.on_local = False
+							Data.deleteBy(file_id=f.id)
+					else:
+						print "WARNING: " + f._path() + " was not uploaded!"
 			else:
-				print "WARNING: " + f._path() + " was not uploaded!"
+				print "Ignoring: " + f._path() + ", not on local."	
 		else:
-			print "Ignoring: " + f._path()
+			print "Ignoring: " + f._path() + ", exists on server."
 
 	# print info for the user
 	if uploadCount > 0:
