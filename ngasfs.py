@@ -4,13 +4,12 @@ import logging
 
 from collections import defaultdict
 
+# Mac uses ENOATTR, and linux uses ENODATA
 import errno
 ENOENT = errno.ENOENT
 ENOATTR = errno.ENODATA
-try:
+if hasattr(errno, "ENOATTR"):
     ENOATTR = errno.ENOATTR
-except AttributeError:
-    print "Here"
 
 from stat import S_IFDIR, S_IFLNK, S_IFREG
 from sys import argv, exit
@@ -262,7 +261,7 @@ def runFS(sLoc, mountDir, db_name, foreground=False, debug=False):
     #sys.stdout = file("out.txt", "w", 0)
     #sys.stderr = file("err.txt", "w", 0)
 
-    fuse = FUSE(FS(db_name), mountDir, foreground=foreground, debug=debug) #daemon_timeout = 10000, entry_timeout = 10000, attr_timeout = 10000)
+    fuse = FUSE(FS(db_name), mountDir, foreground=foreground, debug=debug, noapplexattr=True) #daemon_timeout = 10000, entry_timeout = 10000, attr_timeout = 10000)
     print " Closing Mount"
     # print "SYNCING"
     # postFS(sLoc, db_name, verbose=False, force=False, keep=False)
