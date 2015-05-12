@@ -12,9 +12,11 @@ from fuse import FUSE, FuseOSError, Operations, LoggingMixIn
 
 from sqlobject import *
 import os
+import sys
 import argparse
 
 from tables import *
+from post import postFS
 
 # I DONT KNOW WHAT THIS DOES
 if not hasattr(__builtins__, 'bytes'):
@@ -245,21 +247,27 @@ class FS(LoggingMixIn, Operations):
         f.st_size = max(f.st_size, offset + size)
         return size
 
-def runFS(mountDir, db_name, foreground=False, debug=False):
+def runFS(sLoc, mountDir, db_name, foreground=False, debug=False):
     # I DONT KNOW WHAT THIS DOES
     logging.getLogger().setLevel(logging.DEBUG)
 
+    #sys.stdout = file("out.txt", "w", 0)
+    #sys.stderr = file("err.txt", "w", 0)
+
     fuse = FUSE(FS(db_name), mountDir, foreground=foreground, debug=debug) #daemon_timeout = 10000, entry_timeout = 10000, attr_timeout = 10000)
-    print "Closing Mount"
-    # sync function here!
+    print " Closing Mount"
+    # print "SYNCING"
+    # postFS(sLoc, db_name, verbose=False, force=False, keep=False)
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Run a SQL FS mount")
+    parser.add_argument("sLoc", help="The server location", type=str)
     parser.add_argument("mountDir", help="The directory to mount", type=str)
     parser.add_argument("db_name", help="The name of the FS to create/use", type=str)
     parser.add_argument("-f", "--foreground", help="Run in current process", action="store_true")
     parser.add_argument("-d", "--debug", help="Run in debug mode", action="store_true")
     a = parser.parse_args()
 
-    runFS(a.mountDir, a.db_name, a.foreground, a.debug)
+    runFS(a.sLoc, a.mountDir, a.db_name, a.foreground, a.debug)
     
