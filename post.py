@@ -38,9 +38,9 @@ def postFS(sLoc, dbPath, verbose=True, force=False, keep=False):
 	connection = initDB(dbPath)
 	# upload files in mount
 	postFiles(sLoc, dbPath, "%", verbose, force, keep)
-	# clean data (data is deleted in postFiles)
+	# clean up SQL file to reduce size
 	connection.queryAll("VACUUM")
-	# upload database file
+	# upload SQL file
 	print "Uploading: " + dbPath
 	status = postFile_path(sLoc, dbPath, verbose)
 	if status != 200:
@@ -94,7 +94,7 @@ def postFiles(sLoc, dbPath, pattern, verbose=True, force=False, keep=False):
 					# print stuff
 					print "Uploading: " + f._path()
 					# upload the file
-					status = postFile_DB(sLoc, f.id, dbPath)
+					status = postFile_DB(sLoc, dbPath, f.id)
 					if status == 200:
 						uploadCount += 1
 						f.server_loc = sLoc
@@ -115,6 +115,18 @@ def postFiles(sLoc, dbPath, pattern, verbose=True, force=False, keep=False):
 		print "-- No files were uploaded."
 
 """
+getMimeType()
+-----------------------
+Determines mime-type from a file name by
+using the file extension.
+"""
+def getMimeType(fileName):
+	ext = os.path.splitext(fileName)[1]
+	if ext == "test":
+		return "application/x-nglog"
+	return "application/octet-stream"
+
+"""
 postFile_DB()
 -----------------------
 Posts a single file to a NGAS server using a database file.
@@ -130,15 +142,20 @@ options		- options
 RETURN:
 status of server's response
 """
-def postFile_DB(sLoc, file_id, dbPath, verbose=True):
+def postFile_DB(sLoc, dbPath, file_id, verbose=True):
 
 	# get file from DB
 	initDB(dbPath)
 	f = File.get(file_id)
 
+	# check if file is directory
+	if S_ISDIR(f.st_mode):
+		print "ERROR: " + f._path() + " is directory!"
+		return 1
+
 	# check if file has local data
 	if not f.on_local:
-		print f._path() + " has no local data!"
+		print "ERROR: " + f._path() + " has no local data!"
 		return 1
 
 	# get host and port
@@ -150,7 +167,7 @@ def postFile_DB(sLoc, file_id, dbPath, verbose=True):
 	conn = httplib.HTTPConnection(host+":"+str(port))
 	conn.connect()
 	conn.putrequest('POST', '/ARCHIVE')
-	conn.putheader('Content-type', "application/octet-stream") # check type
+	conn.putheader('Content-type', getMimeType(f.name)) # check type
 	conn.putheader('Content-disposition', 'attachment; filename="'+f.name+'";')
 	conn.putheader('Content-length', str(f.st_size))
 	conn.putheader('Host', host)
@@ -185,7 +202,7 @@ def postFile_path(sLoc, filePath, verbose=True):
 
 	# check if file exists
 	if not os.path.isfile(filePath):
-		print "ERROR: " + filePath + " does not exist!"
+		print "ERROR: " + filePath + " is directory, or does not exist!"
 		return 1
 
 	# get host and port
@@ -197,7 +214,7 @@ def postFile_path(sLoc, filePath, verbose=True):
 	conn = httplib.HTTPConnection(host+":"+str(port))
 	conn.connect()
 	conn.putrequest('POST', '/ARCHIVE')
-	conn.putheader('Content-type', "application/octet-stream")
+	conn.putheader('Content-type', getMimeType(filePath))
 	conn.putheader('Content-disposition', 'attachment; filename="'+os.path.basename(filePath)+'";')
 	conn.putheader('Content-length', str(os.path.getsize(filePath)))
 	conn.putheader('Host', host)
