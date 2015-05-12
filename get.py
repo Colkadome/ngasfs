@@ -26,7 +26,7 @@ pattern     - pattern to match NGAS files to.
 
 RETURN:
 """
-def getFiles(sLoc, dbPath, pattern, *options):
+def getFiles(sLoc, dbPath, pattern, verbose=True):
 
     # connect to DB
     initDB(dbPath)
@@ -78,11 +78,11 @@ def getFiles(sLoc, dbPath, pattern, *options):
 """
 downloadFS()
 """
-def downloadFS(sLoc, db_id, *options):
+def downloadFS(sLoc, db_id, verbose=True, force=False):
     # check for the '.sqlite' extension on db_path
     if not db_id.endswith('.sqlite'):
         db_id = db_id + ".sqlite"
-    downloadFile(sLoc, db_id, options)
+    downloadFile(sLoc, db_id, force)
 
 """
 downloadFile()
@@ -100,9 +100,9 @@ options     - options.
 
 RETURN:
 """
-def downloadFile(sLoc, file_id, *options):
+def downloadFile(sLoc, file_id, verbose=True, force=False):
 
-    if "-f" not in options:
+    if not force:
         if os.path.isfile(file_id):
             print "WARNING: " + file_id + " already exists. Use -f to force download."
             return 1
@@ -126,7 +126,6 @@ Main function
 """
 if __name__ == "__main__":
 
-    # FIGURE OUT HOW TO DO OPTIONAL ARGUMENTS BETTER
     parser = argparse.ArgumentParser(description="Save file info from NGAS server to FS")
     parser.add_argument("sLoc", help="The server location", type=str)
     parser.add_argument("dbPath", help="The path to your FS", type=str)
@@ -134,4 +133,4 @@ if __name__ == "__main__":
     parser.add_argument("-v", "--verbose", help="Be verbose", action="store_true")
     a = parser.parse_args()
 
-    getFiles(a.sLoc, a.dbPath, a.pattern)
+    getFiles(a.sLoc, a.dbPath, a.pattern, a.verbose)

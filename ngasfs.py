@@ -12,9 +12,11 @@ from fuse import FUSE, FuseOSError, Operations, LoggingMixIn
 
 from sqlobject import *
 import os
+import argparse
 
 from tables import *
 
+# I DONT KNOW WHAT THIS DOES
 if not hasattr(__builtins__, 'bytes'):
     bytes = str
 
@@ -243,25 +245,21 @@ class FS(LoggingMixIn, Operations):
         f.st_size = max(f.st_size, offset + size)
         return size
 
+def runFS(mountDir, db_name, foreground=False, debug=False):
+    # I DONT KNOW WHAT THIS DOES
+    logging.getLogger().setLevel(logging.DEBUG)
+
+    fuse = FUSE(FS(db_name), mountDir, foreground=foreground, debug=debug) #daemon_timeout = 10000, entry_timeout = 10000, attr_timeout = 10000)
+    print "Closing Mount"
+    # sync function here!
 
 if __name__ == '__main__':
-    if len(argv) < 3:
-        print('usage: %s <mountpoint> <db_name>' % argv[0])
-        exit(1)
+    parser = argparse.ArgumentParser(description="Run a SQL FS mount")
+    parser.add_argument("mountDir", help="The directory to mount", type=str)
+    parser.add_argument("db_name", help="The name of the FS to create/use", type=str)
+    parser.add_argument("-f", "--foreground", help="Run in current process", action="store_true")
+    parser.add_argument("-d", "--debug", help="Run in debug mode", action="store_true")
+    a = parser.parse_args()
 
-    foreground = False # DOES NOT WORK if file needs to be downloaded. ??
-    if "-f" in argv:
-        foreground = True
-
-    debug = False
-    if "-d" in argv:
-        debug = True
-
-    #sys.stdout = open("out.txt", "a", 0)
-    #sys.stderr = open("err.txt", "a", 0)
-
-    logging.getLogger().setLevel(logging.DEBUG)
-    fuse = FUSE(FS(argv[2]), argv[1], foreground=foreground, debug=debug) #daemon_timeout = 10000, entry_timeout = 10000, attr_timeout = 10000)
-    print "Closing Mount"
-    # SYNC function here!
+    runFS(a.mountDir, a.db_name, a.foreground, a.debug)
     
