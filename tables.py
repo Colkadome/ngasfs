@@ -100,13 +100,13 @@ def getFileFromPath(path):
 """
 Function to init the database
 """
-def initDB(db_name):
-    # check for the '.sqlite' extension on db_path
-    if not db_name.endswith('.sqlite'):
-        db_name = db_name + ".sqlite"
+def initFS(fsName):
+    # check for the '.sqlite' extension on fsName
+    if not fsName.endswith('.sqlite'):
+        fsName = fsName + ".sqlite"
 
     # connect to SQL database
-    connection_string = 'sqlite:' + os.path.realpath(db_name) # uses full path to stop daemon error
+    connection_string = 'sqlite:' + os.path.realpath(fsName) # uses full path to stop daemon error
     connection = connectionForURI(connection_string)
     sqlhub.processConnection = connection
 

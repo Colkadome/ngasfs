@@ -1,5 +1,17 @@
+
+# other imports here
+
+######
+
 from flask import Flask
+from flask import request
 app = Flask(__name__)
+
+
+@app.route('/create_fs', methods=['POST'])
+def create_fs():
+	fsName = request.form['fsName']
+	return "Successfully created " + fsName
 
 @app.route('/', defaults={'path': 'index.html'})
 @app.route('/<path:path>')

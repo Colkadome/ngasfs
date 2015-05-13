@@ -20,7 +20,7 @@ when upload is successful.
 ARGS:
 sLoc 		- server address string (e.g. "http://ec2-54-152-35-198.compute-1.amazonaws.com:7777/")
 				String should contain the trailing '/'.
-dbPath 		- path to FS database sqlite3 file.
+fsName 		- path to FS database sqlite3 file.
 options		- options.
 				"-f" force upload of files.
 				"-v" print server's response for each upload.
@@ -29,22 +29,22 @@ RETURN:
 NOTES:
 this function may only need to use the SQL file. It might be tricky to upload with blocks though.
 """
-def postFS(sLoc, dbPath, verbose=True, force=False, keep=False):
+def postFS(sLoc, fsName, verbose=True, force=False, keep=False):
 
-	# check for the '.sqlite' extension on db_path
-    if not dbPath.endswith('.sqlite'):
-        dbPath = dbPath + ".sqlite"
+	# check for the '.sqlite' extension on fsName
+    if not fsName.endswith('.sqlite'):
+        fsName = fsName + ".sqlite"
 	# init DB
-	connection = initDB(dbPath)
+	connection = initFS(fsName)
 	# upload files in mount
-	postFiles(sLoc, dbPath, "%", verbose, force, keep)
+	postFiles(sLoc, fsName, "%", verbose, force, keep)
 	# clean up SQL file to reduce size
 	connection.queryAll("VACUUM")
 	# upload SQL file
-	print "Uploading: " + dbPath
-	status = postFile_path(sLoc, dbPath, verbose)
+	print "Uploading: " + fsName
+	status = postFile_path(sLoc, fsName, verbose)
 	if status != 200:
-		print "WARNING: " + dbPath + " was not uploaded!"
+		print "WARNING: " + fsName + " was not uploaded!"
 
 """
 postFiles()
@@ -79,10 +79,10 @@ USE CASES:
 + upload file1.txt, where the file has no server_loc entry, but the file exists on the server.
 - uploads file1.txt anyway, because its likely not the same file.
 """
-def postFiles(sLoc, dbPath, pattern, verbose=True, force=False, keep=False):
+def postFiles(sLoc, fsName, pattern, verbose=True, force=False, keep=False):
 
 	# check if database exists
-	initDB(dbPath)
+	initFS(fsName)
 
 	# iterate through matched files, and upload them
 	uploadCount = 0
@@ -94,7 +94,7 @@ def postFiles(sLoc, dbPath, pattern, verbose=True, force=False, keep=False):
 					# print stuff
 					print "Uploading: " + f._path()
 					# upload the file
-					status = postFile_DB(sLoc, dbPath, f.id)
+					status = postFile_FS(sLoc, fsName, f.id)
 					if status == 200:
 						uploadCount += 1
 						f.server_loc = sLoc
@@ -127,9 +127,9 @@ def getMimeType(fileName):
 	return "application/octet-stream"
 
 """
-postFile_DB()
+postFile_FS()
 -----------------------
-Posts a single file to a NGAS server using a database file.
+Posts a single file to a NGAS server using a FS file.
 Uploads even if the file exists on NGAS already.
 
 ARGS:
@@ -142,10 +142,10 @@ options		- options
 RETURN:
 status of server's response
 """
-def postFile_DB(sLoc, dbPath, file_id, verbose=True):
+def postFile_FS(sLoc, fsName, file_id, verbose=True):
 
 	# get file from DB
-	initDB(dbPath)
+	initFS(fsName)
 	f = File.get(file_id)
 
 	# check if file is directory
@@ -236,12 +236,12 @@ if __name__ == "__main__":
 
 	parser = argparse.ArgumentParser(description="Post files to NGAS server")
 	parser.add_argument("sLoc", help="The server location", type=str)
-	parser.add_argument("dbPath", help="The path to your FS", type=str)
+	parser.add_argument("fsName", help="The path to your FS", type=str)
 	parser.add_argument("pattern", help="SQL pattern to match FS files", type=str)
 	parser.add_argument("-v", "--verbose", help="Be verbose", action="store_true")
 	parser.add_argument("-f", "--force", help="Force upload of files that already exist on server", action="store_true")
 	parser.add_argument("-k", "--keep", help="Keep local file data after upload", action="store_true")
 	a = parser.parse_args()
 
-	postFiles(a.sLoc, a.dbPath, a.pattern, a.verbose, a.force, a.keep)
-	#postFS(a.sLoc, a.dbPath, a.verbose, a.force, a.keep)
+	postFiles(a.sLoc, a.fsName, a.pattern, a.verbose, a.force, a.keep)
+	#postFS(a.sLoc, a.fsName, a.verbose, a.force, a.keep)

@@ -20,16 +20,16 @@ Will ignore files with the same ID as files in FS.
 ARGS:
 sLoc        - server address string (e.g. "http://ec2-54-152-35-198.compute-1.amazonaws.com:7777/")
                 String should contain the trailing '/'.
-dbPath      - path to FS database sqlite3 file.
+fsName      - path to FS database sqlite3 file.
 pattern     - pattern to match NGAS files to.
                 Files are matched using SQL query: "SELECT file WHERE file_id LIKE pattern"
 
 RETURN:
 """
-def getFiles(sLoc, dbPath, pattern, verbose=True):
+def getFiles(sLoc, fsName, pattern, verbose=True):
 
     # connect to DB
-    initDB(dbPath)
+    initFS(fsName)
 
     # create set of all filenames already on FS
     ignore = set()
@@ -71,18 +71,18 @@ def getFiles(sLoc, dbPath, pattern, verbose=True):
 
     # print info for the user
     if uploadCount > 0:
-        print "-- " + str(uploadCount) + " file(s) successfully added to " + dbPath
+        print "-- " + str(uploadCount) + " file(s) successfully added to " + fsName
     else:
-        print "-- No files added to " + dbPath
+        print "-- No files added to " + fsName
 
 """
 downloadFS()
 """
-def downloadFS(sLoc, db_id, verbose=True, force=False):
-    # check for the '.sqlite' extension on db_path
-    if not db_id.endswith('.sqlite'):
-        db_id = db_id + ".sqlite"
-    downloadFile(sLoc, db_id, verbose, force)
+def downloadFS(sLoc, fsName, verbose=True, force=False):
+    # check for the '.sqlite' extension on fsName
+    if not fsName.endswith('.sqlite'):
+        fsName = fsName + ".sqlite"
+    downloadFile(sLoc, fsName, verbose, force)
 
 """
 downloadFile()
@@ -128,9 +128,9 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Save file info from NGAS server to FS")
     parser.add_argument("sLoc", help="The server location", type=str)
-    parser.add_argument("dbPath", help="The path to your FS", type=str)
+    parser.add_argument("fsName", help="The path to your FS", type=str)
     parser.add_argument("pattern", help="SQL pattern to match server files", type=str)
     parser.add_argument("-v", "--verbose", help="Be verbose", action="store_true")
     a = parser.parse_args()
 
-    getFiles(a.sLoc, a.dbPath, a.pattern, a.verbose)
+    getFiles(a.sLoc, a.fsName, a.pattern, a.verbose)
