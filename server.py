@@ -29,8 +29,8 @@ class CreateFSHandler(RequestHandler):
 			self.write(fsName + " already exists")
 			return
 
-		# create FS
-		initFS(fsName)
+		# create FS and close connection
+		initFS(fsName).close()
 
 		# return response message
 		self.write("Successfully created " + fsName)
