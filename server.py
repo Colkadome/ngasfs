@@ -4,9 +4,14 @@ from post import *
 from ngasfs import *
 
 import os
+import string
+import random
+from multiprocessing import Process
 
 from tornado.ioloop import IOLoop
 from tornado.web import RequestHandler, Application, url, StaticFileHandler
+
+mountedFS = {}
 
 class IndexPageHandler(RequestHandler):
 	def get(self):
@@ -42,14 +47,24 @@ class MountFSHandler(RequestHandler):
 			self.write(fsName + " does not exist")
 			return
 
-		# create mountDir (SHOULD BE RANDOM NAME)
-		mountDir = "M1"
+		if fsName in mountedFS:
+			mountedFS[fsName].terminate()
+			del mountedFS[fsName]
+			self.write("Successfully unmounted " + fsName)
+		else:
+			# create mountDir with random name
+			mountDir = random.choice(string.letters) + random.choice(string.letters)
 
-		# connect to FS (MUST RUN AS NEW PROCESS)
-		runFS("server_location_here", fsName, mountDir=mountDir, foreground=False)
+			# connect to FS (MUST RUN AS NEW PROCESS)
+			p = Process(target=runFS, args=("sLoc", fsName, mountDir, False, True,))
+			p.start()
+			#p.join()
 
-		# return response message
-		self.write("Successfully mounted " + fsName + " to " + mountDir)
+			# save process in memory
+			mountedFS[fsName] = p
+			
+			#runFS("server_location_here", fsName, mountDir=mountDir, foreground=False)
+			self.write("Successfully mounted " + fsName + " to " + mountDir)
 
 def make_app():
 

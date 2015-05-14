@@ -34,10 +34,10 @@ A SQL-based filesystem.
 """
 class FS(LoggingMixIn, Operations):
 
-    def __init__(self, fsName):
+    def __init__(self, fsName, verbose):
         initFS(fsName)
         self.fd = 0
-        self.verbose = True     # print all activities
+        self.verbose = verbose     # print all activities
 
     def chmod(self, path, mode):
         if self.verbose:
@@ -254,9 +254,9 @@ class FS(LoggingMixIn, Operations):
         f.st_size = max(f.st_size, offset + size)
         return size
 
-def runFS(sLoc, fsName, mountDir="m", foreground=False, debug=False):
+def runFS(sLoc, fsName, mountDir="m", verbose=False, foreground=False, debug=False):
     # I DONT KNOW WHAT THIS DOES
-    logging.getLogger().setLevel(logging.DEBUG)
+    #logging.getLogger().setLevel(logging.DEBUG)
 
     #sys.stdout = file("out.txt", "w", 0)
     #sys.stderr = file("err.txt", "w", 0)
@@ -267,10 +267,10 @@ def runFS(sLoc, fsName, mountDir="m", foreground=False, debug=False):
 
     # run FUSE
     print "Mounting " + fsName +  " to " + mountDir
-    fuse = FUSE(FS(fsName), mountDir, foreground=foreground, debug=debug) #daemon_timeout = 10000, entry_timeout = 10000, attr_timeout = 10000)
+    fuse = FUSE(FS(fsName, verbose), mountDir, foreground=foreground, debug=debug) #daemon_timeout = 10000, entry_timeout = 10000, attr_timeout = 10000)
     
     # clean mount
-    print " Closing Mount"
+    print "Unmounting " + fsName +  " from " + mountDir
     os.rmdir(mountDir)
     # print "SYNCING"
     # postFS(sLoc, fsName, verbose=False, force=False, keep=False)
@@ -281,6 +281,7 @@ if __name__ == '__main__':
     parser.add_argument("sLoc", help="The server location", type=str)
     parser.add_argument("fsName", help="The name of the FS to create/use", type=str)
     parser.add_argument("-m", "--mount", help="The directory to mount to (default is 'm')", default="m", type=str)
+    parser.add_argument("-v", "--verbose", help="Be verbose", action="store_true")
     parser.add_argument("-f", "--foreground", help="Run in current process", action="store_true")
     parser.add_argument("-d", "--debug", help="Run in debug mode", action="store_true")
     a = parser.parse_args()
