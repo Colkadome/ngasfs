@@ -5,51 +5,72 @@ from ngasfs import *
 
 import os
 
-from flask import Flask
-from flask import request
-app = Flask(__name__)
+from tornado.ioloop import IOLoop
+from tornado.web import RequestHandler, Application, url, StaticFileHandler
 
+class IndexPageHandler(RequestHandler):
+	def get(self):
+		self.render("index.html")
 
-@app.route('/create_fs', methods=['POST'])
-def create_fs():
-	fsName = request.form['fsName']
+class CreateFSHandler(RequestHandler):
+	def post(self):
+		self.set_header("Content-Type", "text/plain")
+		fsName = self.get_body_argument("fsName")
 
-	# check if file already exists
-	if not fsName.endswith('.sqlite'):
-		fsName = fsName + ".sqlite"
-	if os.path.isfile(fsName):
-		return fsName + " already exists"
+		# check if file already exists
+		if not fsName.endswith('.sqlite'):
+			fsName = fsName + ".sqlite"
+		if os.path.isfile(fsName):
+			self.write(fsName + " already exists")
+			return
 
-	# create FS
-	initFS(fsName)
+		# create FS
+		initFS(fsName)
 
-	# return response message
-	return "Successfully created " + fsName
+		# return response message
+		self.write("Successfully created " + fsName)
 
-@app.route('/mount_fs', methods=['POST'])
-def mount_fs():
-	fsName = request.form['fsName']
+class MountFSHandler(RequestHandler):
+	def post(self):
+		self.set_header("Content-Type", "text/plain")
+		fsName = self.get_body_argument("fsName")
 
-	# check if file already exists
-	if not fsName.endswith('.sqlite'):
-		fsName = fsName + ".sqlite"
-	if not os.path.isfile(fsName):
-		return fsName + " does not exist"
+		# check if file already exists
+		if not fsName.endswith('.sqlite'):
+			fsName = fsName + ".sqlite"
+		if not os.path.isfile(fsName):
+			self.write(fsName + " does not exist")
+			return
 
-	# create mountDir (SHOULD BE RANDOM NAME)
-	mountDir = "M1"
+		# create mountDir (SHOULD BE RANDOM NAME)
+		mountDir = "M1"
 
-	# connect to FS (DOES NOT WORK, TRY USING TORNADO!!!!)
-	runFS("server_location_here", fsName, mountDir=mountDir, foreground=False)
+		# connect to FS (MUST RUN AS NEW PROCESS)
+		runFS("server_location_here", fsName, mountDir=mountDir, foreground=False)
 
-	# return response message
-	return "Successfully mounted " + fsName + " to " + mountDir
+		# return response message
+		self.write("Successfully mounted " + fsName + " to " + mountDir)
 
-@app.route('/', defaults={'path': 'index.html'})
-@app.route('/<path:path>')
-def catch_all(path):
-	return app.send_static_file(path)
+def make_app():
+
+	settings = {
+		"static_path": os.path.join(os.path.dirname(__file__), r"static"),
+		"template_path": os.path.join(os.path.dirname(__file__), r"static")
+	}
+
+	handlers = [
+		url(r"/create_fs", CreateFSHandler),
+		url(r"/mount_fs", MountFSHandler),
+		url(r"/", IndexPageHandler),
+		url(r"/(.*)", StaticFileHandler, {'path': settings['static_path']}),
+	]
+
+	return Application(handlers, **settings)
+
+def main():
+    app = make_app()
+    app.listen(8888)
+    IOLoop.current().start()
 
 if __name__ == '__main__':
-	app.run(debug=True)
-	#app.run(host='0.0.0.0')
+	main()
