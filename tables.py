@@ -107,21 +107,21 @@ def initFS(fsName):
 
     # connect to SQL database
     connection_string = 'sqlite:' + os.path.realpath(fsName) # uses full path to stop daemon error
-    connection = connectionForURI(connection_string)
-    sqlhub.processConnection = connection
+    con = connectionForURI(connection_string)
+    sqlhub.processConnection = con
 
     # create tables
-    File.createTable(ifNotExists=True)
-    Data.createTable(ifNotExists=True)
+    con.File.createTable(ifNotExists=True)
+    con.Data.createTable(ifNotExists=True)
 
     # create root entry (if not exists)
-    if File.select().count() == 0:
+    if con.File.select().count() == 0:
         now = time()
-        File(name="", path="/", st_mode=(S_IFDIR | 0755), st_nlink=3,
+        con.File(name="", path="/", st_mode=(S_IFDIR | 0755), st_nlink=3,
             st_size=0, st_ctime=now, st_mtime=now,
             st_atime=now, st_uid=0, st_gid=0,
             server_loc=None, attrs={}, on_local=True)
-        File(name=FS_SPECIFIC_PATH, path="/", st_mode=(S_IFDIR | 0755), st_nlink=2,
+        con.File(name=FS_SPECIFIC_PATH, path="/", st_mode=(S_IFDIR | 0755), st_nlink=2,
             st_size=0, st_ctime=now, st_mtime=now,
             st_atime=now, st_uid=0, st_gid=0,
             server_loc=None, attrs={}, on_local=True)
@@ -133,4 +133,4 @@ def initFS(fsName):
             server_loc="http://ec2-54-152-35-198.compute-1.amazonaws.com:7777/",
             attrs={}, on_local=False)
         """
-    return connection
+    return con

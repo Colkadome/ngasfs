@@ -66,6 +66,32 @@ class MountFSHandler(RequestHandler):
 			#runFS("server_location_here", fsName, mountDir=mountDir, foreground=False)
 			self.write("Successfully mounted " + fsName + " to " + mountDir)
 
+class GetFilesHandler(RequestHandler):
+	def post(self):
+		self.set_header("Content-Type", "text/plain")
+		sLoc = self.get_body_argument("sLoc")
+		fsName = self.get_body_argument("fsName")
+		patterns = self.get_body_argument("patterns")
+
+		# get files (MAKE IT ACCEPT ARRAY, OOPS)
+		p = Process(target=getFiles, args=(sLoc, fsName, patterns,))
+		p.start()
+
+		# return response message (SYNC WITH PROCESS?)
+		self.write("Successfully got files")
+
+class GetFSHandler(RequestHandler):
+	def post(self):
+		self.set_header("Content-Type", "text/plain")
+		sLoc = self.get_body_argument("sLoc")
+		fsName = self.get_body_argument("fsName")
+
+		# download FS
+		downloadFS(sLoc, fsName)
+
+		# return response message
+		self.write("Successfully downloaded " + fsName)
+
 def make_app():
 
 	settings = {
@@ -76,6 +102,8 @@ def make_app():
 	handlers = [
 		url(r"/create_fs", CreateFSHandler),
 		url(r"/mount_fs", MountFSHandler),
+		url(r"/get_files", GetFilesHandler),
+		url(r"/get_fs", GetFSHandler),
 		url(r"/", IndexPageHandler),
 		url(r"/(.*)", StaticFileHandler, {'path': settings['static_path']}),
 	]

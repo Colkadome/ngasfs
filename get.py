@@ -29,11 +29,11 @@ RETURN:
 def getFiles(sLoc, fsName, pattern, verbose=True):
 
     # connect to DB
-    initFS(fsName)
+    con = initFS(fsName)
 
     # create set of all filenames already on FS
     ignore = set()
-    for entry in File.select():
+    for entry in con.File.select():
         ignore.add(entry.name)
     
     # gather server files using pattern
@@ -62,12 +62,15 @@ def getFiles(sLoc, fsName, pattern, verbose=True):
             iTime = mktime(datetime.datetime.strptime(iTimes[i].replace("T", " "), "%Y-%m-%d %H:%M:%S.%f").timetuple())
 
             # add file to SQL database
-            File(name=str(names[i]), path="/", st_mode=33060, st_nlink=1,
+            con.File(name=str(names[i]), path="/", st_mode=33060, st_nlink=1,
                 st_size=sizes[i], st_ctime=cTime, st_mtime=iTime,
                 st_atime=iTime, st_uid=0, st_gid=0,
                 server_loc=sLoc, attrs={}, on_local=False)
         else:
             print "Ignoring: " + names[i] + " [" + versions[i] + "]"
+
+    # close connection
+    con.close()
 
     # print info for the user
     if uploadCount > 0:

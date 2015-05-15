@@ -35,11 +35,12 @@ def postFS(sLoc, fsName, verbose=True, force=False, keep=False):
     if not fsName.endswith('.sqlite'):
         fsName = fsName + ".sqlite"
 	# init DB
-	connection = initFS(fsName)
+	con = initFS(fsName)
 	# upload files in mount
 	postFiles(sLoc, fsName, "%", verbose, force, keep)
 	# clean up SQL file to reduce size
-	connection.queryAll("VACUUM")
+	con.queryAll("VACUUM")
+	con.close()
 	# upload SQL file
 	print "Uploading: " + fsName
 	status = postFile_path(sLoc, fsName, verbose)
@@ -82,12 +83,12 @@ USE CASES:
 def postFiles(sLoc, fsName, pattern, verbose=True, force=False, keep=False):
 
 	# check if database exists
-	initFS(fsName)
+	con = initFS(fsName)
 
 	# iterate through matched files, and upload them
 	uploadCount = 0
 	print "-- Matching: " + pattern
-	for f in File.select(LIKE(File.q.name, pattern) & (File.q.id > 1) & NOT(File.q.path.startswith("/"+FS_SPECIFIC_PATH))):
+	for f in con.File.select(LIKE(con.File.q.name, pattern) & (con.File.q.id > 1) & NOT(con.File.q.path.startswith("/"+FS_SPECIFIC_PATH))):
 		if f.server_loc==None or force:
 			if f.on_local:
 				if not S_ISDIR(f.st_mode):
@@ -107,6 +108,9 @@ def postFiles(sLoc, fsName, pattern, verbose=True, force=False, keep=False):
 				print "Ignoring: " + f._path() + ", not on local."	
 		else:
 			print "Ignoring: " + f._path() + ", exists on server."
+
+	# close connection
+	con.close()
 
 	# print info for the user
 	if uploadCount > 0:
@@ -145,8 +149,8 @@ status of server's response
 def postFile_FS(sLoc, fsName, file_id, verbose=True):
 
 	# get file from DB
-	initFS(fsName)
-	f = File.get(file_id)
+	conFS = initFS(fsName)
+	f = conFS.File.get(file_id)
 
 	# check if file is directory
 	if S_ISDIR(f.st_mode):
@@ -174,8 +178,11 @@ def postFile_FS(sLoc, fsName, file_id, verbose=True):
 	conn.endheaders()
 
 	# send data
-	for d in Data.selectBy(file_id=f.id).orderBy("series"):
+	for d in Data.selectBy(file_id=f.id, connection=conFS).orderBy("series"):
  		conn.send(d.data)
+
+ 	# close FS connection
+ 	conFS.close()
 
  	# get response
 	r = conn.getresponse()
