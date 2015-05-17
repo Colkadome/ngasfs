@@ -4,6 +4,10 @@
 	background-color: #81B3E2;
 }
 
+#console {
+	overflow-y: scroll;
+}
+
 #console p {
 	margin-bottom: 0px;
 }

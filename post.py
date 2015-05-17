@@ -37,7 +37,7 @@ def postFS(sLoc, fsName, verbose=True, force=False, keep=False):
 	# init DB
 	con = initFS(fsName)
 	# upload files in mount
-	postFiles(sLoc, fsName, "%", verbose, force, keep)
+	postFiles(sLoc, fsName, ["%"], verbose, force, keep)
 	# clean up SQL file to reduce size
 	con.queryAll("VACUUM")
 	con.close()
@@ -58,7 +58,7 @@ ARGS:
 sLoc 		- server address string (e.g. "http://ec2-54-152-35-198.compute-1.amazonaws.com:7777/")
 				String should contain the trailing '/'.
 dbPath 		- path to FS database sqlite3 file.
-pattern    	- a pattern to match files in the database.
+patterns    - array of patterns to match files in the database.
                 Files are matched using SQL query: "SELECT file WHERE file_id LIKE pattern"
 options		- options
 				"-f" force upload of files.
@@ -80,34 +80,44 @@ USE CASES:
 + upload file1.txt, where the file has no server_loc entry, but the file exists on the server.
 - uploads file1.txt anyway, because its likely not the same file.
 """
-def postFiles(sLoc, fsName, pattern, verbose=True, force=False, keep=False):
+def postFiles(sLoc, fsName, patterns, verbose=True, force=False, keep=False):
 
 	# check if database exists
 	con = initFS(fsName)
 
-	# iterate through matched files, and upload them
+	# define set of file IDs to ignore
+	ignore = set()
+
+	# iterate through patterns
 	uploadCount = 0
-	print "-- Matching: " + pattern
-	for f in con.File.select(LIKE(con.File.q.name, pattern) & (con.File.q.id > 1) & NOT(con.File.q.path.startswith("/"+FS_SPECIFIC_PATH))):
-		if f.server_loc==None or force:
-			if f.on_local:
-				if not S_ISDIR(f.st_mode):
-					# print stuff
-					print "Uploading: " + f._path()
-					# upload the file
-					status = postFile_FS(sLoc, fsName, f.id)
-					if status == 200:
-						uploadCount += 1
-						f.server_loc = sLoc
-						if not keep:
-							f.on_local = False
-							Data.deleteBy(file_id=f.id)
+	for pattern in patterns:
+		# iterate through matched files, and upload them
+		print "-- Matching: " + pattern
+		for f in con.File.select(LIKE(con.File.q.name, pattern) & (con.File.q.id > 1) & NOT(con.File.q.path.startswith("/"+FS_SPECIFIC_PATH))):
+			
+			# check if file has already been matched
+			if f.id not in ignore:
+				ignore.add(f.id)
+
+				if f.server_loc==None or force:
+					if f.on_local:
+						if not S_ISDIR(f.st_mode):
+							# print stuff
+							print "Uploading: " + f._path()
+							# upload the file
+							status = postFile_FS(sLoc, fsName, f.id)
+							if status == 200:
+								uploadCount += 1
+								f.server_loc = sLoc
+								if not keep:
+									f.on_local = False
+									Data.deleteBy(file_id=f.id)
+							else:
+								print "WARNING: " + f._path() + " was not uploaded!"
 					else:
-						print "WARNING: " + f._path() + " was not uploaded!"
-			else:
-				print "Ignoring: " + f._path() + ", not on local."	
-		else:
-			print "Ignoring: " + f._path() + ", exists on server."
+						print "Ignoring: " + f._path() + ", not on local."	
+				else:
+					print "Ignoring: " + f._path() + ", exists on server."
 
 	# close connection
 	con.close()
@@ -250,5 +260,5 @@ if __name__ == "__main__":
 	parser.add_argument("-k", "--keep", help="Keep local file data after upload", action="store_true")
 	a = parser.parse_args()
 
-	postFiles(a.sLoc, a.fsName, a.pattern, a.verbose, a.force, a.keep)
+	postFiles(a.sLoc, a.fsName, [a.pattern], a.verbose, a.force, a.keep)
 	#postFS(a.sLoc, a.fsName, a.verbose, a.force, a.keep)

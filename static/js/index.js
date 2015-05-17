@@ -1,6 +1,25 @@
 $(function(){
 
 	/*
+		Function to log to console
+	*/
+	function logToConsole(m) {
+		$("#console").append("<p>"+m+"</p>");
+		$('#console').scrollTop($('#console')[0].scrollHeight);
+	}
+
+	/*
+		Window resize event
+	*/
+	$(window).resize(function(){
+        var windowH = $(window).height();
+        $('#console').css('height', (windowH - 330)+'px');
+    })
+
+	// Trigger resize to resize console
+    $(window).trigger('resize');
+
+	/*
 		Create FS button.
 		Will send POST request to server.
 		Logs reply.
@@ -9,10 +28,10 @@ $(function(){
 		var fsName = $("#fsName_input").val();
 		if(fsName) {
 			$.post("create_fs", {fsName:fsName}, function(data){
-				$("#console").append("<p>"+data+"</p>");
+				logToConsole(data);
 			})
 			.fail(function(data){
-				$("#console").append("<p>Error "+data.status+": "+data.statusText+"</p>");
+				logToConsole("Error "+data.status+": "+data.statusText);
 			})
 		}
 	});
@@ -26,10 +45,10 @@ $(function(){
 		var fsName = $("#fsName_input").val();
 		if(fsName) {
 			$.post("mount_fs", {fsName:fsName}, function(data){
-				$("#console").append("<p>"+data+"</p>");
+				logToConsole(data);
 			})
 			.fail(function(data){
-				$("#console").append("<p>Error "+data.status+": "+data.statusText+"</p>");
+				logToConsole("Error "+data.status+": "+data.statusText);
 			})
 		}
 	});
@@ -45,10 +64,10 @@ $(function(){
 		var patterns = $("#patterns_input").val();
 		if(fsName && sLoc && patterns) {
 			$.post("get_files", {sLoc:sLoc, fsName:fsName, patterns:patterns}, function(data){
-				$("#console").append("<p>"+data+"</p>");
+				logToConsole(data);
 			})
 			.fail(function(data){
-				$("#console").append("<p>Error "+data.status+": "+data.statusText+"</p>");
+				logToConsole("Error "+data.status+": "+data.statusText);
 			})
 		}
 	});
@@ -63,10 +82,47 @@ $(function(){
 		var sLoc = $("#sLoc_input").val();
 		if(fsName && sLoc) {
 			$.post("get_fs", {sLoc:sLoc, fsName:fsName}, function(data){
-				$("#console").append("<p>"+data+"</p>");
+				logToConsole(data);
 			})
 			.fail(function(data){
-				$("#console").append("<p>Error "+data.status+": "+data.statusText+"</p>");
+				logToConsole("Error "+data.status+": "+data.statusText);
+			})
+		}
+	});
+
+	/*
+		Upload Files button.
+		Will send POST request to server.
+		Logs reply.
+	*/
+	$("#post_files").click(function(){
+		var fsName = $("#fsName_input").val();
+		var sLoc = $("#sLoc_input").val();
+		var patterns = $("#patterns_input").val();
+		if(fsName && sLoc && patterns) {
+			$.post("post_files", {sLoc:sLoc, fsName:fsName, patterns:patterns}, function(data){
+				logToConsole(data);
+			})
+			.fail(function(data){
+				logToConsole("Error "+data.status+": "+data.statusText);
+			})
+		}
+	});
+
+	/*
+		Upload FS button.
+		Will send POST request to server.
+		Logs reply.
+	*/
+	$("#post_fs").click(function(){
+		var fsName = $("#fsName_input").val();
+		var sLoc = $("#sLoc_input").val();
+		if(fsName && sLoc) {
+			$.post("post_fs", {sLoc:sLoc, fsName:fsName}, function(data){
+				logToConsole(data);
+			})
+			.fail(function(data){
+				logToConsole("Error "+data.status+": "+data.statusText);
 			})
 		}
 	});

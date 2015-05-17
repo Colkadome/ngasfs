@@ -11,7 +11,7 @@ from multiprocessing import Process
 from tornado.ioloop import IOLoop
 from tornado.web import RequestHandler, Application, url, StaticFileHandler
 
-mountedFS = {}
+processes = {}
 
 class IndexPageHandler(RequestHandler):
 	def get(self):
@@ -47,9 +47,9 @@ class MountFSHandler(RequestHandler):
 			self.write(fsName + " does not exist")
 			return
 
-		if fsName in mountedFS:
-			mountedFS[fsName].terminate()
-			del mountedFS[fsName]
+		if fsName in processes:
+			processes[fsName].terminate()
+			del processes[fsName]
 			self.write("Successfully unmounted " + fsName)
 		else:
 			# create mountDir with random name
@@ -61,7 +61,7 @@ class MountFSHandler(RequestHandler):
 			#p.join()
 
 			# save process in memory
-			mountedFS[fsName] = p
+			processes[fsName] = p
 			
 			#runFS("server_location_here", fsName, mountDir=mountDir, foreground=False)
 			self.write("Successfully mounted " + fsName + " to " + mountDir)
@@ -71,14 +71,14 @@ class GetFilesHandler(RequestHandler):
 		self.set_header("Content-Type", "text/plain")
 		sLoc = self.get_body_argument("sLoc")
 		fsName = self.get_body_argument("fsName")
-		patterns = self.get_body_argument("patterns")
+		patterns = self.get_body_argument("patterns").split()
 
-		# get files (MAKE IT ACCEPT ARRAY, OOPS)
+		# get files
 		p = Process(target=getFiles, args=(sLoc, fsName, patterns,))
 		p.start()
 
 		# return response message (SYNC WITH PROCESS?)
-		self.write("Successfully got files")
+		self.write("Getting files...")
 
 class GetFSHandler(RequestHandler):
 	def post(self):
@@ -90,7 +90,34 @@ class GetFSHandler(RequestHandler):
 		downloadFS(sLoc, fsName)
 
 		# return response message
-		self.write("Successfully downloaded " + fsName)
+		self.write("Downloading " + fsName + "...")
+
+class PostFilesHandler(RequestHandler):
+	def post(self):
+		self.set_header("Content-Type", "text/plain")
+		sLoc = self.get_body_argument("sLoc")
+		fsName = self.get_body_argument("fsName")
+		patterns = self.get_body_argument("patterns").split()
+
+		# post files
+		p = Process(target=postFiles, args=(sLoc, fsName, patterns,))
+		p.start()
+
+		# return response message (SYNC WITH PROCESS?)
+		self.write("Posting files...")
+
+class PostFSHandler(RequestHandler):
+	def post(self):
+		self.set_header("Content-Type", "text/plain")
+		sLoc = self.get_body_argument("sLoc")
+		fsName = self.get_body_argument("fsName")
+
+		# post files
+		p = Process(target=postFS, args=(sLoc, fsName,))
+		p.start()
+
+		# return response message (SYNC WITH PROCESS?)
+		self.write("Posting " + fsName + "...")
 
 def make_app():
 
@@ -104,6 +131,8 @@ def make_app():
 		url(r"/mount_fs", MountFSHandler),
 		url(r"/get_files", GetFilesHandler),
 		url(r"/get_fs", GetFSHandler),
+		url(r"/post_files", PostFilesHandler),
+		url(r"/post_fs", PostFSHandler),
 		url(r"/", IndexPageHandler),
 		url(r"/(.*)", StaticFileHandler, {'path': settings['static_path']}),
 	]
