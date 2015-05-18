@@ -50,7 +50,7 @@ class MountFSHandler(RequestHandler):
 			self.write(fsName + " does not exist")
 			return
 
-		if fsName in processes:
+		if fsName in processes and processes[fsName].is_alive():
 			processes[fsName].terminate()
 			del processes[fsName]
 			self.write("Successfully unmounted " + fsName)
