@@ -80,6 +80,7 @@ def getFiles(sLoc, fsName, patterns, verbose=True):
         print "-- " + str(uploadCount) + " file(s) successfully added to " + fsName
     else:
         print "-- No files added to " + fsName
+    return uploadCount
 
 """
 downloadFS()
@@ -88,7 +89,7 @@ def downloadFS(sLoc, fsName, verbose=True, force=False):
     # check for the '.sqlite' extension on fsName
     if not fsName.endswith('.sqlite'):
         fsName = fsName + ".sqlite"
-    downloadFile(sLoc, fsName, verbose, force)
+    return downloadFile(sLoc, fsName, verbose, force)
 
 """
 downloadFile()
@@ -124,8 +125,11 @@ def downloadFile(sLoc, file_id, verbose=True, force=False):
     #handle errors
     except HTTPError, e:
         print "HTTP Error:", e.code, url
+        return 1
     except URLError, e:
         print "URL Error:", e.reason, url
+        return 1
+    return 0
 
 """
 Main function

@@ -46,6 +46,8 @@ def postFS(sLoc, fsName, verbose=True, force=False, keep=False):
 	status = postFile_path(sLoc, fsName, verbose)
 	if status != 200:
 		print "WARNING: " + fsName + " was not uploaded!"
+		return 1
+	return 0
 
 """
 postFiles()
@@ -127,6 +129,7 @@ def postFiles(sLoc, fsName, patterns, verbose=True, force=False, keep=False):
 		print "-- " + str(uploadCount) + " file(s) successfully uploaded to NGAS."
 	else:
 		print "-- No files were uploaded."
+	return uploadCount
 
 """
 getMimeType()

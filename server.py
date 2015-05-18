@@ -9,9 +9,12 @@ import random
 from multiprocessing import Process
 
 from tornado.ioloop import IOLoop
+from tornado.httpserver import HTTPServer
 from tornado.web import RequestHandler, Application, url, StaticFileHandler
 
 processes = {}
+
+# ADD MULTIPLE CLIENT SUPPORT
 
 class IndexPageHandler(RequestHandler):
 	def get(self):
@@ -74,11 +77,10 @@ class GetFilesHandler(RequestHandler):
 		patterns = self.get_body_argument("patterns").split()
 
 		# get files
-		p = Process(target=getFiles, args=(sLoc, fsName, patterns,))
-		p.start()
+		count = getFiles(sLoc, fsName, patterns)
 
-		# return response message (SYNC WITH PROCESS?)
-		self.write("Getting files...")
+		# return response
+		self.write(str(count) + " file(s) added to " + fsName + " with pattern(s) " + ', '.join(patterns))
 
 class GetFSHandler(RequestHandler):
 	def post(self):
@@ -87,10 +89,10 @@ class GetFSHandler(RequestHandler):
 		fsName = self.get_body_argument("fsName")
 
 		# download FS
-		downloadFS(sLoc, fsName)
-
-		# return response message
-		self.write("Downloading " + fsName + "...")
+		if downloadFS(sLoc, fsName):
+			self.write("Could not download " + fsName)
+		else:
+			self.write("Successfully downloaded " + fsName)
 
 class PostFilesHandler(RequestHandler):
 	def post(self):
@@ -100,11 +102,10 @@ class PostFilesHandler(RequestHandler):
 		patterns = self.get_body_argument("patterns").split()
 
 		# post files
-		p = Process(target=postFiles, args=(sLoc, fsName, patterns,))
-		p.start()
+		count = postFiles(sLoc, fsName, patterns)
 
-		# return response message (SYNC WITH PROCESS?)
-		self.write("Posting files...")
+		# return response
+		self.write(str(count) + " file(s) added to " + sLoc + " with pattern(s) " + ', '.join(patterns))
 
 class PostFSHandler(RequestHandler):
 	def post(self):
@@ -113,11 +114,10 @@ class PostFSHandler(RequestHandler):
 		fsName = self.get_body_argument("fsName")
 
 		# post files
-		p = Process(target=postFS, args=(sLoc, fsName,))
-		p.start()
-
-		# return response message (SYNC WITH PROCESS?)
-		self.write("Posting " + fsName + "...")
+		if postFS(sLoc, fsName):
+			self.write("Could not upload " + fsName)
+		else:
+			self.write("Successfully uploaded " + fsName)
 
 def make_app():
 
@@ -141,7 +141,8 @@ def make_app():
 
 def main():
     app = make_app()
-    app.listen(8888)
+    server = HTTPServer(app)
+    server.listen(8888)
     IOLoop.current().start()
 
 if __name__ == '__main__':

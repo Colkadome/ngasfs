@@ -63,6 +63,7 @@ $(function(){
 		var sLoc = $("#sLoc_input").val();
 		var patterns = $("#patterns_input").val();
 		if(fsName && sLoc && patterns) {
+			logToConsole("Getting files for " + fsName + " with pattern(s) " + patterns + "...");
 			$.post("get_files", {sLoc:sLoc, fsName:fsName, patterns:patterns}, function(data){
 				logToConsole(data);
 			})
@@ -81,6 +82,7 @@ $(function(){
 		var fsName = $("#fsName_input").val();
 		var sLoc = $("#sLoc_input").val();
 		if(fsName && sLoc) {
+			logToConsole("Getting FS " + fsName + "...");
 			$.post("get_fs", {sLoc:sLoc, fsName:fsName}, function(data){
 				logToConsole(data);
 			})
@@ -100,6 +102,7 @@ $(function(){
 		var sLoc = $("#sLoc_input").val();
 		var patterns = $("#patterns_input").val();
 		if(fsName && sLoc && patterns) {
+			logToConsole("Posting files from " + fsName + " with pattern(s) " + patterns + "...");
 			$.post("post_files", {sLoc:sLoc, fsName:fsName, patterns:patterns}, function(data){
 				logToConsole(data);
 			})
@@ -118,6 +121,7 @@ $(function(){
 		var fsName = $("#fsName_input").val();
 		var sLoc = $("#sLoc_input").val();
 		if(fsName && sLoc) {
+			logToConsole("Posting " + fsName + " to " + sLoc + "...");
 			$.post("post_fs", {sLoc:sLoc, fsName:fsName}, function(data){
 				logToConsole(data);
 			})
