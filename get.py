@@ -125,10 +125,10 @@ def downloadFile(sLoc, file_id, verbose=True, force=False):
     #handle errors
     except HTTPError, e:
         print "HTTP Error:", e.code, url
-        return 1
+        return 2
     except URLError, e:
         print "URL Error:", e.reason, url
-        return 1
+        return 3
     return 0
 
 """

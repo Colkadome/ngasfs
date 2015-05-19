@@ -42,7 +42,7 @@ class File(SQLObject):
         >>> True
         """
         if not self.on_local and self.server_loc:
-            print "--- DOWNLOADING to " + self._path()
+            print "--- DOWNLOADING " + self._path()
             url = self.server_loc + "RETRIEVE?file_id=" + self.name
             try:
                 con = urlopen(url)

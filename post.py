@@ -32,8 +32,8 @@ this function may only need to use the SQL file. It might be tricky to upload wi
 def postFS(sLoc, fsName, verbose=True, force=False, keep=False):
 
 	# check for the '.sqlite' extension on fsName
-    if not fsName.endswith('.sqlite'):
-        fsName = fsName + ".sqlite"
+	if not fsName.endswith('.sqlite'):
+		fsName = fsName + ".sqlite"
 	# init DB
 	con = initFS(fsName)
 	# upload files in mount
@@ -46,8 +46,7 @@ def postFS(sLoc, fsName, verbose=True, force=False, keep=False):
 	status = postFile_path(sLoc, fsName, verbose)
 	if status != 200:
 		print "WARNING: " + fsName + " was not uploaded!"
-		return 1
-	return 0
+	return status
 
 """
 postFiles()
@@ -101,9 +100,9 @@ def postFiles(sLoc, fsName, patterns, verbose=True, force=False, keep=False):
 			if f.id not in ignore:
 				ignore.add(f.id)
 
-				if f.server_loc==None or force:
-					if f.on_local:
-						if not S_ISDIR(f.st_mode):
+				if not S_ISDIR(f.st_mode):
+					if f.server_loc==None or force:
+						if f.on_local:
 							# print stuff
 							print "Uploading: " + f._path()
 							# upload the file
@@ -113,13 +112,13 @@ def postFiles(sLoc, fsName, patterns, verbose=True, force=False, keep=False):
 								f.server_loc = sLoc
 								if not keep:
 									f.on_local = False
-									Data.deleteBy(file_id=f.id)
+									Data.deleteBy(file_id=f.id, connection=con)
 							else:
 								print "WARNING: " + f._path() + " was not uploaded!"
+						else:
+							print "Ignoring: " + f._path() + ", not on local."
 					else:
-						print "Ignoring: " + f._path() + ", not on local."	
-				else:
-					print "Ignoring: " + f._path() + ", exists on server."
+						print "Ignoring: " + f._path() + ", exists on server."
 
 	# close connection
 	con.close()

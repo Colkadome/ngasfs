@@ -34,6 +34,9 @@ $(function(){
 				logToConsole("Error "+data.status+": "+data.statusText);
 			})
 		}
+		else {
+			logToConsole("Please specify File System Name");
+		}
 	});
 
 	/*
@@ -51,6 +54,9 @@ $(function(){
 				logToConsole("Error "+data.status+": "+data.statusText);
 			})
 		}
+		else {
+			logToConsole("Please specify File System Name");
+		}
 	});
 
 	/*
@@ -63,13 +69,22 @@ $(function(){
 		var sLoc = $("#sLoc_input").val();
 		var patterns = $("#patterns_input").val();
 		if(fsName && sLoc && patterns) {
-			logToConsole("Getting files for " + fsName + " with pattern(s) " + patterns + "...");
+			logToConsole("Getting files with pattern(s) " + patterns + "...");
 			$.post("get_files", {sLoc:sLoc, fsName:fsName, patterns:patterns}, function(data){
 				logToConsole(data);
 			})
 			.fail(function(data){
 				logToConsole("Error "+data.status+": "+data.statusText);
 			})
+		}
+		else if (!fsName) {
+			logToConsole("Please specify File System Name");
+		}
+		else if (!sLoc) {
+			logToConsole("Please specify Server Location");
+		}
+		else if (!patterns) {
+			logToConsole("Please specify SQL patterns to match files for download (eg. 'file%' to download all files starting with 'file')");
 		}
 	});
 
@@ -82,13 +97,19 @@ $(function(){
 		var fsName = $("#fsName_input").val();
 		var sLoc = $("#sLoc_input").val();
 		if(fsName && sLoc) {
-			logToConsole("Getting FS " + fsName + "...");
+			logToConsole("Downloading " + fsName + "...");
 			$.post("get_fs", {sLoc:sLoc, fsName:fsName}, function(data){
 				logToConsole(data);
 			})
 			.fail(function(data){
 				logToConsole("Error "+data.status+": "+data.statusText);
 			})
+		}
+		else if(!fsName) {
+			logToConsole("Please specify File System Name");
+		}
+		else if(!sLoc) {
+			logToConsole("Please specify Server Location");
 		}
 	});
 
@@ -101,14 +122,25 @@ $(function(){
 		var fsName = $("#fsName_input").val();
 		var sLoc = $("#sLoc_input").val();
 		var patterns = $("#patterns_input").val();
+		var force = $("#post_files_force").is(':checked')?1:0;
+		var keep = $("#post_files_keep").is(':checked')?1:0;
 		if(fsName && sLoc && patterns) {
-			logToConsole("Posting files from " + fsName + " with pattern(s) " + patterns + "...");
-			$.post("post_files", {sLoc:sLoc, fsName:fsName, patterns:patterns}, function(data){
+			logToConsole("Uploading files with pattern(s) " + patterns + "...");
+			$.post("post_files", {sLoc:sLoc, fsName:fsName, patterns:patterns, force:force, keep:keep}, function(data){
 				logToConsole(data);
 			})
 			.fail(function(data){
 				logToConsole("Error "+data.status+": "+data.statusText);
 			})
+		}
+		else if(!fsName) {
+			logToConsole("Please specify File System Name");
+		}
+		else if(!sLoc) {
+			logToConsole("Please specify Server Location");
+		}
+		else if(!patterns) {
+			logToConsole("Please specify SQL patterns to match files for upload (eg. 'file%' to upload all files starting with 'file')");
 		}
 	});
 
@@ -121,13 +153,19 @@ $(function(){
 		var fsName = $("#fsName_input").val();
 		var sLoc = $("#sLoc_input").val();
 		if(fsName && sLoc) {
-			logToConsole("Posting " + fsName + " to " + sLoc + "...");
+			logToConsole("Uploading " + fsName + "...");
 			$.post("post_fs", {sLoc:sLoc, fsName:fsName}, function(data){
 				logToConsole(data);
 			})
 			.fail(function(data){
 				logToConsole("Error "+data.status+": "+data.statusText);
 			})
+		}
+		else if(!fsName) {
+			logToConsole("Please specify File System Name");
+		}
+		else if(!sLoc) {
+			logToConsole("Please specify Server Location");
 		}
 	});
 

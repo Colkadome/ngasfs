@@ -36,7 +36,7 @@ class CreateFSHandler(RequestHandler):
 		initFS(fsName).close()
 
 		# return response message
-		self.write("Successfully created " + fsName)
+		self.write("Created " + fsName)
 
 class MountFSHandler(RequestHandler):
 	def post(self):
@@ -52,22 +52,22 @@ class MountFSHandler(RequestHandler):
 
 		if fsName in processes and processes[fsName].is_alive():
 			processes[fsName].terminate()
-			del processes[fsName]
-			self.write("Successfully unmounted " + fsName)
+			#del processes[fsName]
+			self.write("Unmounting " + fsName)
 		else:
-			# create mountDir with random name
-			mountDir = random.choice(string.letters) + random.choice(string.letters)
+			# create mountDir with name of FS
+			mountDir = fsName.replace('.sqlite', '')
 
-			# connect to FS (MUST RUN AS NEW PROCESS)
-			p = Process(target=runFS, args=("sLoc", fsName, mountDir, False, True,))
-			p.start()
-			#p.join()
-
-			# save process in memory
-			processes[fsName] = p
-			
-			#runFS("server_location_here", fsName, mountDir=mountDir, foreground=False)
-			self.write("Successfully mounted " + fsName + " to " + mountDir)
+			# check if mountDir is currently mounted
+			if not os.path.ismount(mountDir):
+				# run ngasfs
+				p = Process(target=runFS, args=("sLoc", fsName, mountDir, False, True,))
+				p.start()
+				#p.join()
+				processes[fsName] = p
+				self.write("Mounted " + fsName + " to " + mountDir)
+			else:
+				self.write("ERROR: " + fsName + " is busy!")
 
 class GetFilesHandler(RequestHandler):
 	def post(self):
@@ -80,7 +80,7 @@ class GetFilesHandler(RequestHandler):
 		count = getFiles(sLoc, fsName, patterns)
 
 		# return response
-		self.write(str(count) + " file(s) added to " + fsName + " with pattern(s) " + ', '.join(patterns))
+		self.write(str(count) + " file(s) added to " + fsName)
 
 class GetFSHandler(RequestHandler):
 	def post(self):
@@ -89,10 +89,15 @@ class GetFSHandler(RequestHandler):
 		fsName = self.get_body_argument("fsName")
 
 		# download FS
-		if downloadFS(sLoc, fsName):
-			self.write("Could not download " + fsName)
+		status = downloadFS(sLoc, fsName)
+		if status==1:
+			self.write("Could not download " + fsName + ", file already exists")
+		elif status==2:
+			self.write("Could not download " + fsName + ", HTTP error")
+		elif status==3:
+			self.write("Could not download " + fsName + ", URL error")
 		else:
-			self.write("Successfully downloaded " + fsName)
+			self.write("Downloaded " + fsName)
 
 class PostFilesHandler(RequestHandler):
 	def post(self):
@@ -100,12 +105,14 @@ class PostFilesHandler(RequestHandler):
 		sLoc = self.get_body_argument("sLoc")
 		fsName = self.get_body_argument("fsName")
 		patterns = self.get_body_argument("patterns").split()
+		force = int(self.get_body_argument("force"))
+		keep = int(self.get_body_argument("keep"))
 
 		# post files
-		count = postFiles(sLoc, fsName, patterns)
+		count = postFiles(sLoc, fsName, patterns, True, force, keep)
 
 		# return response
-		self.write(str(count) + " file(s) added to " + sLoc + " with pattern(s) " + ', '.join(patterns))
+		self.write(str(count) + " file(s) added to " + sLoc)
 
 class PostFSHandler(RequestHandler):
 	def post(self):
@@ -113,11 +120,19 @@ class PostFSHandler(RequestHandler):
 		sLoc = self.get_body_argument("sLoc")
 		fsName = self.get_body_argument("fsName")
 
+		# check if file already exists
+		if not fsName.endswith('.sqlite'):
+			fsName = fsName + ".sqlite"
+		if not os.path.isfile(fsName):
+			self.write(fsName + " does not exist")
+			return
+
 		# post files
-		if postFS(sLoc, fsName):
-			self.write("Could not upload " + fsName)
+		status = postFS(sLoc, fsName)
+		if status!=200:
+			self.write(str(status) + ", Could not upload " + fsName)
 		else:
-			self.write("Successfully uploaded " + fsName)
+			self.write("Uploaded " + fsName)
 
 def make_app():
 
