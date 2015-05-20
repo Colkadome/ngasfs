@@ -76,6 +76,13 @@ class GetFilesHandler(RequestHandler):
 		fsName = self.get_body_argument("fsName")
 		patterns = self.get_body_argument("patterns").split()
 
+		# check if fs exists
+		if not fsName.endswith('.sqlite'):
+			fsName = fsName + ".sqlite"
+		if not os.path.isfile(fsName):
+			self.write(fsName + " does not exist")
+			return
+
 		# get files
 		count = getFiles(sLoc, fsName, patterns)
 
@@ -107,6 +114,13 @@ class PostFilesHandler(RequestHandler):
 		patterns = self.get_body_argument("patterns").split()
 		force = int(self.get_body_argument("force"))
 		keep = int(self.get_body_argument("keep"))
+
+		# check if fs exists
+		if not fsName.endswith('.sqlite'):
+			fsName = fsName + ".sqlite"
+		if not os.path.isfile(fsName):
+			self.write(fsName + " does not exist")
+			return
 
 		# post files
 		count = postFiles(sLoc, fsName, patterns, True, force, keep)

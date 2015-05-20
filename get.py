@@ -86,7 +86,7 @@ def getFiles(sLoc, fsName, patterns, verbose=True):
 downloadFS()
 """
 def downloadFS(sLoc, fsName, verbose=True, force=False):
-    # check for the '.sqlite' extension on fsName
+    # check for the '.sqlite' extension on fsName (maybe .ngas.sqlite special file?)
     if not fsName.endswith('.sqlite'):
         fsName = fsName + ".sqlite"
     return downloadFile(sLoc, fsName, verbose, force)

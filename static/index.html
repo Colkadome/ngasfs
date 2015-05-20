@@ -26,8 +26,10 @@
 						<input type="text" class="form-control" id="fsName_input" placeholder="Enter FS Name">
 					</div>
 				</div>
+				<!--- MAKE CLEAN BUTTON -->
+				<!--- ADD BROWSE FS (%.sqlite), AND FILES BUTTON -->
 				<div class="col-xs-3">
-					<button type="submit" id="create_fs" class="btn btn-default">Create FS</button>
+					<button title="Creates FS" type="submit" id="create_fs" class="btn btn-default">Create FS</button>
 				</div>
 				<div class="col-xs-3">
 					<button type="submit" id="mount_fs" class="btn btn-default">Mount/Unmount FS</button>
@@ -37,11 +39,13 @@
 				<div class="col-xs-6">
 					<div class="form-group">
 						<label for="sLoc_input">Server Location</label>
-						<input type="text" class="form-control" id="sLoc_input" placeholder="Enter Server Address">
+						<input type="text" class="form-control" id="sLoc_input" placeholder="Enter Server Address" value="http://ec2-54-152-35-198.compute-1.amazonaws.com:7777/">
+						<!--- ADD CHECK CONNECTION BUTTON that hides/shows buttons -->
 					</div>
 				</div>
 				<div class="col-xs-3">
 					<button type="submit" id="get_fs" class="btn btn-default">Download FS</button>
+					<!--- ADD BROWSE DROPDOWN -->
 				</div>
 				<div class="col-xs-3">
 					<button type="submit" id="post_fs" class="btn btn-default">Upload FS</button>
@@ -52,10 +56,12 @@
 					<div class="form-group">
 						<label for="patterns_input">Patterns</label>
 						<input type="text" class="form-control" id="patterns_input" placeholder="Enter Patterns">
+						<!--- ADD BROWSE FILES DROPDOWN -->
 					</div>
 				</div>
 				<div class="col-xs-3">
-					<button type="submit" id="get_files" class="btn btn-default">Download Files</button>
+					<button type="submit" id="get_files" class="btn btn-default">Add Files (FIX)</button> <!-- DISABLE UNTIL CREATEFS -->
+					<!--- ADD CHECK FILES BUTTON -->
 				</div>
 				<div class="col-xs-3">
 					<button type="submit" id="post_files" class="btn btn-default">Upload Files</button>

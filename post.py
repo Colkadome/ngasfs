@@ -118,7 +118,7 @@ def postFiles(sLoc, fsName, patterns, verbose=True, force=False, keep=False):
 						else:
 							print "Ignoring: " + f._path() + ", not on local."
 					else:
-						print "Ignoring: " + f._path() + ", exists on server."
+						print "Ignoring: " + f._path() + ", exists on server." #checksum check?
 
 	# close connection
 	con.close()

@@ -13,7 +13,7 @@ import os
 
 # globals
 BLOCK_SIZE = 65536
-FS_SPECIFIC_PATH = "FS_files"
+FS_SPECIFIC_PATH = "local_files"
 
 """
 File column in SQL database.
