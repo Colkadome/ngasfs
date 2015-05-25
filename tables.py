@@ -8,6 +8,7 @@ from stat import S_IFDIR, S_IFREG
 from fuse import FuseOSError
 
 from sqlobject import *
+from sqlobject.sqlbuilder import *
 from urllib2 import urlopen, URLError, HTTPError
 import os
 
@@ -96,6 +97,18 @@ def getFileFromPath(path):
         return File.selectBy(path=getFilePath(path), name=getFileName(path)).getOne()
     except SQLObjectNotFound:
         raise FuseOSError(ENOENT)
+
+"""
+Function to clean database.
+Deletes all data from files that exist on a server.
+Sets on_local to False for all files on server.
+"""
+def cleanFS(fsName):
+    con = initFS(fsName)
+    con.Data.deleteMany(where=IN(con.Data.q.file_id, Select(con.File.q.id, con.File.q.server_loc!=None)))
+    con.query(con.sqlrepr(Update('file', values={'on_local':False}, where='server_loc IS NOT NULL')))   # set on_local to False
+    con.query("VACUUM")
+    con.close()
 
 """
 Function to init the database

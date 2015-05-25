@@ -34,13 +34,13 @@ def postFS(sLoc, fsName, verbose=True, force=False, keep=False):
 	# check for the '.sqlite' extension on fsName
 	if not fsName.endswith('.sqlite'):
 		fsName = fsName + ".sqlite"
-	# init DB
-	con = initFS(fsName)
-	# upload files in mount
-	postFiles(sLoc, fsName, ["%"], verbose, force, keep)
-	# clean up SQL file to reduce size
-	con.queryAll("VACUUM")
-	con.close()
+
+	# upload files in mount and clean FS
+	postFiles(sLoc, fsName, ["%"], verbose, force)
+	if not keep:
+		cleanFS(fsName)
+		# maybe clean up a temp file???? No Keep argument????
+
 	# upload SQL file
 	print "Uploading: " + fsName
 	status = postFile_path(sLoc, fsName, verbose)
@@ -81,7 +81,7 @@ USE CASES:
 + upload file1.txt, where the file has no server_loc entry, but the file exists on the server.
 - uploads file1.txt anyway, because its likely not the same file.
 """
-def postFiles(sLoc, fsName, patterns, verbose=True, force=False, keep=False):
+def postFiles(sLoc, fsName, patterns, verbose=True, force=False):
 
 	# check if database exists
 	con = initFS(fsName)
@@ -110,9 +110,6 @@ def postFiles(sLoc, fsName, patterns, verbose=True, force=False, keep=False):
 							if status == 200:
 								uploadCount += 1
 								f.server_loc = sLoc
-								if not keep:
-									f.on_local = False
-									Data.deleteBy(file_id=f.id, connection=con)
 							else:
 								print "WARNING: " + f._path() + " was not uploaded!"
 						else:
