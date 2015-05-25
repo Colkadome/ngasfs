@@ -16,6 +16,48 @@ processes = {}
 
 # ADD MULTIPLE CLIENT SUPPORT
 
+class CheckServerHandler(RequestHandler):
+	def get(self):
+		self.set_header("Content-Type", "text/plain")
+		sLoc = self.get_argument("sLoc")
+		
+		# get host and port
+		o = urlparse(sLoc)
+		host = o.hostname
+		port = o.port
+
+		# connect to URL
+		conn = httplib.HTTPConnection(host+":"+str(port))
+		conn.connect()
+		conn.putrequest('GET', '/STATUS')
+		conn.endheaders()
+
+ 		# get response
+		r = conn.getresponse()
+		if r.status == 200:
+			print r.read()
+		else:
+			print r.status, r.reason
+		self.write({"status":r.status})
+
+def checkServer(sLoc):
+
+	# get host and port
+	o = urlparse(sLoc)
+	host = o.hostname
+	port = o.port
+
+	# connect to URL
+	conn = httplib.HTTPConnection(host+":"+str(port))
+	conn.connect()
+	conn.putrequest('GET', '/STATUS')
+	conn.endheaders()
+
+ 	# get response
+	r = conn.getresponse()
+	print r.status, r.reason
+	return r.status
+
 class IndexPageHandler(RequestHandler):
 	def get(self):
 		self.render("index.html")
@@ -158,6 +200,7 @@ def make_app():
 	handlers = [
 		url(r"/create_fs", CreateFSHandler),
 		url(r"/mount_fs", MountFSHandler),
+		url(r"/check_server", CheckServerHandler),
 		url(r"/get_files", GetFilesHandler),
 		url(r"/get_fs", GetFSHandler),
 		url(r"/post_files", PostFilesHandler),

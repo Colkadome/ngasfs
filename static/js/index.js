@@ -60,6 +60,33 @@ $(function(){
 	});
 
 	/*
+		Check Connection button.
+		Will send POST request to server.
+		Logs reply.
+	*/
+	$("#check_server").click(function(){
+		var sLoc = $("#sLoc_input").val();
+		if(sLoc) {
+			logToConsole("Checking server...");
+			$.get("check_server", {sLoc:sLoc}, function(data){
+				if(data.status == 200) {
+					logToConsole("Server is OK!");
+					// ENABLE BUTTONS HERE
+				}
+				else {
+					logToConsole("Error "+data.status+": Server is unavailable");
+				}
+			})
+			.fail(function(data){
+				logToConsole("Error "+data.status+": "+data.statusText);
+			})
+		}
+		else {
+			logToConsole("Please specify Server Location");
+		}
+	});
+
+	/*
 		Download Files button.
 		Will send POST request to server.
 		Logs reply.

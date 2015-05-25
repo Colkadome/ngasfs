@@ -38,21 +38,17 @@ def getFileList(sLoc, patterns):
     return T
 
 """
-getFiles() /ngas.ddns.net
+getFilesFromList()
 -----------------------
-Add multiple files to a FS from a NGAS server.
-Will ignore files with the same ID as files in FS.
+Add files to FS with a numpy list.
 
 ARGS:
-sLoc        - server address string (e.g. "http://ec2-54-152-35-198.compute-1.amazonaws.com:7777/")
-                String should contain the trailing '/'.
 fsName      - path to FS database sqlite3 file.
-patterns    - array of patterns to match NGAS files to.
-                Files are matched using SQL query: "SELECT file WHERE file_id LIKE pattern"
-
+T           - The numpy list of file info, sorted by descending version
 RETURN:
+upload count
 """
-def getFiles(sLoc, fsName, patterns, verbose=True):
+def getFilesFromList(sLoc, fsName, T, verbose=True):
 
     # connect to DB
     con = initFS(fsName)
@@ -61,9 +57,6 @@ def getFiles(sLoc, fsName, patterns, verbose=True):
     ignore = set()
     for entry in con.File.select():
         ignore.add(entry.name)
-
-    # gather server files using pattern
-    T = getFileList(sLoc, patterns)
 
     # get various columns
     names = T['col3']
@@ -101,6 +94,26 @@ def getFiles(sLoc, fsName, patterns, verbose=True):
     else:
         print "-- No files added to " + fsName
     return uploadCount
+
+
+"""
+getFiles() /ngas.ddns.net
+-----------------------
+Add multiple files to a FS from a NGAS server.
+Will ignore files with the same ID as files in FS.
+
+ARGS:
+sLoc        - server address string (e.g. "http://ec2-54-152-35-198.compute-1.amazonaws.com:7777/")
+                String should contain the trailing '/'.
+fsName      - path to FS database sqlite3 file.
+patterns    - array of patterns to match NGAS files to.
+                Files are matched using SQL query: "SELECT file WHERE file_id LIKE pattern"
+
+RETURN:
+upload count
+"""
+def getFiles(sLoc, fsName, patterns, verbose=True):
+    return getFilesFromList(sLoc, fsName, getFileList(sLoc, patterns))
 
 """
 downloadFS()
