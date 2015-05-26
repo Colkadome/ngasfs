@@ -43,12 +43,12 @@
 					</div>
 				</div>
 				<div class="col-xs-3">
-					<button type="submit" id="get_fs" class="btn btn-default">Download FS</button>
+					<button type="submit" id="get_fs" class="btn btn-default" disabled>Download FS</button>
 					<button type="submit" id="check_server" class="btn btn-default">Check Connection</button>
 					<!--- ADD BROWSE DROPDOWN -->
 				</div>
 				<div class="col-xs-3">
-					<button type="submit" id="post_fs" class="btn btn-default">Upload FS</button>
+					<button type="submit" id="post_fs" class="btn btn-default" disabled>Upload FS</button>
 				</div>
 			</div>
 			<div class="row">
@@ -60,15 +60,13 @@
 					</div>
 				</div>
 				<div class="col-xs-3">
-					<button type="submit" id="get_files" class="btn btn-default">Add Files (FIX)</button> <!-- DISABLE UNTIL CREATEFS -->
+					<button type="submit" id="get_files" class="btn btn-default">Get Files</button> <!-- DISABLE UNTIL CREATEFS -->
 					<!--- ADD CHECK FILES BUTTON -->
 				</div>
 				<div class="col-xs-3">
 					<button type="submit" id="post_files" class="btn btn-default">Upload Files</button>
 					<br/>
 					<input type="checkbox" id="post_files_force"> Force Upload</input>
-					<br/>
-					<input type="checkbox" id="post_files_keep"> Keep File Data</input>
 				</div>
 			</div>
 			<div id="console">

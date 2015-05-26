@@ -155,7 +155,6 @@ class PostFilesHandler(RequestHandler):
 		fsName = self.get_body_argument("fsName")
 		patterns = self.get_body_argument("patterns").split()
 		force = int(self.get_body_argument("force"))
-		keep = int(self.get_body_argument("keep"))
 
 		# check if fs exists
 		if not fsName.endswith('.sqlite'):
@@ -165,7 +164,7 @@ class PostFilesHandler(RequestHandler):
 			return
 
 		# post files
-		count = postFiles(sLoc, fsName, patterns, True, force, keep)
+		count = postFiles(sLoc, fsName, patterns, True, force)
 
 		# return response
 		self.write(str(count) + " file(s) added to " + sLoc)

@@ -12,7 +12,7 @@ import argparse
 from tables import *
 
 """
-getFileList()
+getServerList()
 -----------------------
 Returns a numpy list of files, sorted by version number.
 
@@ -24,7 +24,7 @@ patterns    - array of patterns to match NGAS files to.
 RETURN:
 numpy array of files, sorted by descending version
 """
-def getFileList(sLoc, patterns):
+def getServerList(sLoc, patterns):
 
     # get entries from all patterns
     T = atpy.Table(sLoc + 'QUERY?query=files_like&format=list&like=' + patterns[0], type='ascii')[3:]   # get everything past result 3
@@ -69,19 +69,22 @@ def getFilesFromList(sLoc, fsName, T, verbose=True):
     uploadCount = 0
     for i in range(len(T)):
         if names[i] not in ignore:
-            print "Adding: " + names[i] + " [" + versions[i] + "]"
-            ignore.add(names[i])
-            uploadCount += 1
+            if not names[i].endswith(".sqlite"):
+                print "Adding: " + names[i] + " [" + versions[i] + "]"
+                ignore.add(names[i])
+                uploadCount += 1
 
-            # get time attributes
-            cTime = mktime(datetime.datetime.strptime(cTimes[i].replace("T", " "), "%Y-%m-%d %H:%M:%S.%f").timetuple())
-            iTime = mktime(datetime.datetime.strptime(iTimes[i].replace("T", " "), "%Y-%m-%d %H:%M:%S.%f").timetuple())
+                # get time attributes
+                cTime = mktime(datetime.datetime.strptime(cTimes[i].replace("T", " "), "%Y-%m-%d %H:%M:%S.%f").timetuple())
+                iTime = mktime(datetime.datetime.strptime(iTimes[i].replace("T", " "), "%Y-%m-%d %H:%M:%S.%f").timetuple())
 
-            # add file to SQL database
-            con.File(name=str(names[i]), path="/", st_mode=33060, st_nlink=1,
-                st_size=sizes[i], st_ctime=cTime, st_mtime=iTime,
-                st_atime=iTime, st_uid=0, st_gid=0,
-                server_loc=sLoc, attrs={}, on_local=False)
+                # add file to SQL database
+                con.File(name=str(names[i]), path="/", st_mode=33060, st_nlink=1,
+                    st_size=sizes[i], st_ctime=cTime, st_mtime=iTime,
+                    st_atime=iTime, st_uid=0, st_gid=0,
+                    server_loc=sLoc, attrs={}, on_local=False)
+            else:
+                print "Ignoring: " + names[i] + " [" + versions[i] + "], is sqlite file"
         else:
             print "Ignoring: " + names[i] + " [" + versions[i] + "]"
 
@@ -113,7 +116,7 @@ RETURN:
 upload count
 """
 def getFiles(sLoc, fsName, patterns, verbose=True):
-    return getFilesFromList(sLoc, fsName, getFileList(sLoc, patterns))
+    return getFilesFromList(sLoc, fsName, getServerList(sLoc, patterns))
 
 """
 downloadFS()

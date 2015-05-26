@@ -11,6 +11,7 @@ from sqlobject import *
 from sqlobject.sqlbuilder import *
 from urllib2 import urlopen, URLError, HTTPError
 import os
+from stat import S_ISDIR
 
 # globals
 BLOCK_SIZE = 65536
@@ -59,6 +60,12 @@ class File(SQLObject):
                 print "HTTP Error:", e.code, url
             except URLError, e:
                 print "URL Error:", e.reason, url
+
+    def _is_FS_file(self):
+        return self.path.startswith("/" + FS_SPECIFIC_PATH)
+
+    def _isDir(self):
+        return S_ISDIR(self.st_mode)
 
     def _path(self):
         if self.path == "/":

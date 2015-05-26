@@ -29,7 +29,7 @@ RETURN:
 NOTES:
 this function may only need to use the SQL file. It might be tricky to upload with blocks though.
 """
-def postFS(sLoc, fsName, verbose=True, force=False, keep=False):
+def postFS(sLoc, fsName, verbose=True, force=False):
 
 	# check for the '.sqlite' extension on fsName
 	if not fsName.endswith('.sqlite'):
@@ -37,9 +37,7 @@ def postFS(sLoc, fsName, verbose=True, force=False, keep=False):
 
 	# upload files in mount and clean FS
 	postFiles(sLoc, fsName, ["%"], verbose, force)
-	if not keep:
-		cleanFS(fsName)
-		# maybe clean up a temp file???? No Keep argument????
+	cleanFS(fsName)
 
 	# upload SQL file
 	print "Uploading: " + fsName
@@ -82,6 +80,50 @@ USE CASES:
 - uploads file1.txt anyway, because its likely not the same file.
 """
 def postFiles(sLoc, fsName, patterns, verbose=True, force=False):
+	postFilesWithList(sLoc, fsName, getFSList(fsName, patterns), verbose, force)
+
+"""
+postFilesWithList()
+-----------------------
+Posts files using a list of files.
+
+"""
+def postFilesWithList(sLoc, fsName, L, verbose=True, force=False):
+
+	# iterate through list
+	uploadCount = 0
+	for f in L:
+		if f.server_loc==None or force:
+			if f.on_local:
+				# print stuff
+				print "Uploading: " + f._path()
+				# upload the file
+				status = postFile_FS(sLoc, fsName, f.id)
+				if status == 200:
+					uploadCount += 1
+					f.server_loc = sLoc
+				else:
+					print "WARNING: " + f._path() + " was not uploaded!"
+			else:
+				print "Ignoring: " + f._path() + ", not on local."
+		else:
+			print "Ignoring: " + f._path() + ", exists on server." #checksum check?
+
+	# print info for the user
+	if uploadCount > 0:
+		print "-- " + str(uploadCount) + " file(s) successfully uploaded to NGAS."
+	else:
+		print "-- No files were uploaded."
+	return uploadCount
+
+"""
+getFSList()
+-----------------------
+Gets a list of files from the FS.
+Not all files returned are suitable for upload, but are files
+the user will want to know about
+"""
+def getFSList(fsName, patterns):
 
 	# check if database exists
 	con = initFS(fsName)
@@ -90,42 +132,18 @@ def postFiles(sLoc, fsName, patterns, verbose=True, force=False):
 	ignore = set()
 
 	# iterate through patterns
-	uploadCount = 0
+	L = list()
 	for pattern in patterns:
-		# iterate through matched files, and upload them
-		print "-- Matching: " + pattern
-		for f in con.File.select(LIKE(con.File.q.name, pattern) & (con.File.q.id > 1) & NOT(con.File.q.path.startswith("/"+FS_SPECIFIC_PATH))):
-			
-			# check if file has already been matched
-			if f.id not in ignore:
+		for f in con.File.select(LIKE(con.File.q.name, pattern)):
+			if not f._isDir() and not f._is_FS_file() and f.id not in ignore:
+				L.append(f)
 				ignore.add(f.id)
 
-				if not S_ISDIR(f.st_mode):
-					if f.server_loc==None or force:
-						if f.on_local:
-							# print stuff
-							print "Uploading: " + f._path()
-							# upload the file
-							status = postFile_FS(sLoc, fsName, f.id)
-							if status == 200:
-								uploadCount += 1
-								f.server_loc = sLoc
-							else:
-								print "WARNING: " + f._path() + " was not uploaded!"
-						else:
-							print "Ignoring: " + f._path() + ", not on local."
-					else:
-						print "Ignoring: " + f._path() + ", exists on server." #checksum check?
-
-	# close connection
+	# close FS connection and return
 	con.close()
+	return L
 
-	# print info for the user
-	if uploadCount > 0:
-		print "-- " + str(uploadCount) + " file(s) successfully uploaded to NGAS."
-	else:
-		print "-- No files were uploaded."
-	return uploadCount
+
 
 """
 getMimeType()
@@ -256,8 +274,7 @@ if __name__ == "__main__":
 	parser.add_argument("pattern", help="SQL pattern to match FS files", type=str)
 	parser.add_argument("-v", "--verbose", help="Be verbose", action="store_true")
 	parser.add_argument("-f", "--force", help="Force upload of files that already exist on server", action="store_true")
-	parser.add_argument("-k", "--keep", help="Keep local file data after upload", action="store_true")
 	a = parser.parse_args()
 
-	postFiles(a.sLoc, a.fsName, [a.pattern], a.verbose, a.force, a.keep)
+	postFiles(a.sLoc, a.fsName, [a.pattern], a.verbose, a.force)
 	#postFS(a.sLoc, a.fsName, a.verbose, a.force, a.keep)
