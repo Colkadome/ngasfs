@@ -19,6 +19,15 @@ $(function(){
 	// Trigger resize to resize console
     $(window).trigger('resize');
 
+    /*
+		FS files list dropdown button
+    */
+    $(".dropdown_button").click(function(){
+    	$("#" + $(this).attr("target")).toggle("hidden");
+    	$(this).toggleClass("dropdown");
+    	$(this).toggleClass("dropup");
+    });
+
 	/*
 		Create FS button.
 		Will send POST request to server.

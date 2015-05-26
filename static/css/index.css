@@ -11,3 +11,30 @@
 #console p {
 	margin-bottom: 0px;
 }
+
+.scroll_list {
+	border: 1px solid #ccc;
+	padding: 6px 12px;
+	overflow-y: scroll;
+	height: 200px;
+}
+
+.dropdown_button {
+	cursor: pointer;
+	font-size: 12px;
+	text-decoration: underline;
+}
+
+.dropdown:after {
+  font-family: "Glyphicons Halflings";
+  content: "\e253";
+}
+
+.dropup:after {
+  font-family: "Glyphicons Halflings";
+  content: "\e252";
+}
+
+#get_files {
+	float: right;
+}

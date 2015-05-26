@@ -25,48 +25,42 @@
 						<label for="dbPath_input">File System Name</label>
 						<input type="text" class="form-control" id="fsName_input" placeholder="Enter FS Name">
 					</div>
-				</div>
-				<!--- MAKE CLEAN BUTTON -->
-				<!--- ADD BROWSE FS (%.sqlite), AND FILES BUTTON -->
-				<div class="col-xs-3">
-					<button title="Creates FS" type="submit" id="create_fs" class="btn btn-default">Create FS</button>
-				</div>
-				<div class="col-xs-3">
-					<button type="submit" id="mount_fs" class="btn btn-default">Mount/Unmount FS</button>
-				</div>
-			</div>
-			<div class="row">
-				<div class="col-xs-6">
 					<div class="form-group">
 						<label for="sLoc_input">Server Location</label>
 						<input type="text" class="form-control" id="sLoc_input" placeholder="Enter Server Address" value="http://ec2-54-152-35-198.compute-1.amazonaws.com:7777/">
 					</div>
+					<div class="form-group">
+						<label for="patterns_input">Search FS/Server</label>
+						<input type="text" class="form-control" id="patterns_input" placeholder="Enter SQL Patterns">
+					</div>
 				</div>
-				<div class="col-xs-3">
-					<button type="submit" id="get_fs" class="btn btn-default" disabled>Download FS</button>
-					<button type="submit" id="check_server" class="btn btn-default">Check Connection</button>
-					<!--- ADD BROWSE DROPDOWN -->
-				</div>
-				<div class="col-xs-3">
-					<button type="submit" id="post_fs" class="btn btn-default" disabled>Upload FS</button>
+				<!--- MAKE CLEAN BUTTON -->
+				<!--- ADD BROWSE FS (%.sqlite), AND FILES BUTTON -->
+				<div class="col-xs-6">
+					<span title="Creates FS" type="submit" id="create_fs" class="btn btn-default">Create FS</span>
+					<span type="submit" id="check_server" class="btn btn-default">Check Connection</span>
+					<span type="submit" id="get_fs" class="btn btn-default server_reliant">Download FS</span>
+					<span type="submit" id="mount_fs" class="btn btn-default">Mount/Unmount FS</span>
+					<span type="submit" id="post_fs" class="btn btn-default server_reliant">Upload FS</span>
+					<input type="checkbox" id="post_files_force"> Force Upload</input>
 				</div>
 			</div>
 			<div class="row">
 				<div class="col-xs-6">
-					<div class="form-group">
-						<label for="patterns_input">Patterns</label>
-						<input type="text" class="form-control" id="patterns_input" placeholder="Enter Patterns">
-						<!--- ADD BROWSE FILES DROPDOWN -->
+					<div class="server_reliant">
+						<span id="server_files_list_dropdown" class="dropdown_button dropdown" target="server_files_list">Show Server Files with Pattern </span>
+						<div id="server_files_list" class="scroll_list" hidden>
+						</div>
 					</div>
+					<span type="submit" id="get_files" class="btn btn-default fs_reliant server_reliant">Add Files to FS <span class="glyphicon glyphicon-arrow-right" aria-hidden="true"></span></span>
 				</div>
-				<div class="col-xs-3">
-					<button type="submit" id="get_files" class="btn btn-default">Get Files</button> <!-- DISABLE UNTIL CREATEFS -->
-					<!--- ADD CHECK FILES BUTTON -->
-				</div>
-				<div class="col-xs-3">
-					<button type="submit" id="post_files" class="btn btn-default">Upload Files</button>
-					<br/>
-					<input type="checkbox" id="post_files_force"> Force Upload</input>
+				<div class="col-xs-6">
+					<div class="fs_reliant">
+						<span id="fs_files_list_dropdown" class="dropdown_button dropdown" target="fs_files_list">Show FS Files with Pattern </span>
+						<div id="fs_files_list" class="scroll_list" hidden>
+						</div>
+					</div>
+					<span type="submit" id="post_files" class="btn btn-default fs_reliant server_reliant"><span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span> Add Files to Server</span>
 				</div>
 			</div>
 			<div id="console">
