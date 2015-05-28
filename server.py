@@ -38,25 +38,7 @@ class CheckServerHandler(RequestHandler):
 			print r.read()
 		else:
 			print r.status, r.reason
-		self.write({"status":r.status})
-
-def checkServer(sLoc):
-
-	# get host and port
-	o = urlparse(sLoc)
-	host = o.hostname
-	port = o.port
-
-	# connect to URL
-	conn = httplib.HTTPConnection(host+":"+str(port))
-	conn.connect()
-	conn.putrequest('GET', '/STATUS')
-	conn.endheaders()
-
- 	# get response
-	r = conn.getresponse()
-	print r.status, r.reason
-	return r.status
+		self.write({"status":r.status, "statusText":"Server is OK!"})
 
 class IndexPageHandler(RequestHandler):
 	def get(self):
@@ -71,14 +53,14 @@ class CreateFSHandler(RequestHandler):
 		if not fsName.endswith('.sqlite'):
 			fsName = fsName + ".sqlite"
 		if os.path.isfile(fsName):
-			self.write(fsName + " already exists")
+			self.write({"status":0, "statusText":fsName + " exists"})
 			return
 
 		# create FS and close connection
 		initFS(fsName).close()
 
 		# return response message
-		self.write("Created " + fsName)
+		self.write({"status":0, "statusText":"Created " + fsName})
 
 class MountFSHandler(RequestHandler):
 	def post(self):
@@ -86,16 +68,17 @@ class MountFSHandler(RequestHandler):
 		fsName = self.get_body_argument("fsName")
 
 		# check if file already exists
+		# ADD A CHECK_ARGUMENT FUNCTION
 		if not fsName.endswith('.sqlite'):
 			fsName = fsName + ".sqlite"
 		if not os.path.isfile(fsName):
-			self.write(fsName + " does not exist")
+			self.write({"status":2, "statusText":fsName + " does not exist"})
 			return
 
 		if fsName in processes and processes[fsName].is_alive():
 			processes[fsName].terminate()
 			#del processes[fsName]
-			self.write("Unmounting " + fsName)
+			self.write({"status":1, "statusText":"Unmounting " + fsName})
 		else:
 			# create mountDir with name of FS
 			mountDir = fsName.replace('.sqlite', '')
@@ -107,9 +90,9 @@ class MountFSHandler(RequestHandler):
 				p.start()
 				#p.join()
 				processes[fsName] = p
-				self.write("Mounted " + fsName + " to " + mountDir)
+				self.write({"status":0, "statusText":"Mounted " + fsName + " to " + mountDir})
 			else:
-				self.write("ERROR: " + fsName + " is busy!")
+				self.write({"status":2, "statusText":"ERROR: " + fsName + " is busy!"})
 
 class GetFilesHandler(RequestHandler):
 	def post(self):
@@ -122,14 +105,14 @@ class GetFilesHandler(RequestHandler):
 		if not fsName.endswith('.sqlite'):
 			fsName = fsName + ".sqlite"
 		if not os.path.isfile(fsName):
-			self.write(fsName + " does not exist")
+			self.write({"status":1, "statusText":fsName + " does not exist"})
 			return
 
 		# get files
 		count = getFiles(sLoc, fsName, patterns)
 
 		# return response
-		self.write(str(count) + " file(s) added to " + fsName)
+		self.write({"status":0, "statusText":str(count) + " file(s) added to " + fsName})
 
 class GetFSHandler(RequestHandler):
 	def post(self):
@@ -140,13 +123,13 @@ class GetFSHandler(RequestHandler):
 		# download FS
 		status = downloadFS(sLoc, fsName)
 		if status==1:
-			self.write("Could not download " + fsName + ", file already exists")
+			self.write({"status":1, "statusText":"Could not download " + fsName + ", file already exists"})
 		elif status==2:
-			self.write("Could not download " + fsName + ", HTTP error")
+			self.write({"status":2, "statusText":"Could not download " + fsName + ", HTTP error"})
 		elif status==3:
-			self.write("Could not download " + fsName + ", URL error")
+			self.write({"status":3, "statusText":"Could not download " + fsName + ", URL error"})
 		else:
-			self.write("Downloaded " + fsName)
+			self.write({"status":0, "statusText":"Downloaded " + fsName})
 
 class PostFilesHandler(RequestHandler):
 	def post(self):
@@ -160,14 +143,14 @@ class PostFilesHandler(RequestHandler):
 		if not fsName.endswith('.sqlite'):
 			fsName = fsName + ".sqlite"
 		if not os.path.isfile(fsName):
-			self.write(fsName + " does not exist")
+			self.write({"status":1, "statusText":fsName + " does not exist"})
 			return
 
 		# post files
 		count = postFiles(sLoc, fsName, patterns, True, force)
 
 		# return response
-		self.write(str(count) + " file(s) added to " + sLoc)
+		self.write({"status":0, "statusText":str(count) + " file(s) added to " + sLoc})
 
 class PostFSHandler(RequestHandler):
 	def post(self):
@@ -179,15 +162,15 @@ class PostFSHandler(RequestHandler):
 		if not fsName.endswith('.sqlite'):
 			fsName = fsName + ".sqlite"
 		if not os.path.isfile(fsName):
-			self.write(fsName + " does not exist")
+			self.write({"status":1, "statusText":fsName + " does not exist"})
 			return
 
 		# post files
 		status = postFS(sLoc, fsName)
 		if status!=200:
-			self.write(str(status) + ", Could not upload " + fsName)
+			self.write({"status":status, "statusText":str(status) + ", Could not upload " + fsName})
 		else:
-			self.write("Uploaded " + fsName)
+			self.write({"status":0, "statusText":"Uploaded " + fsName})
 
 def make_app():
 
