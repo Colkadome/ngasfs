@@ -95,34 +95,81 @@ $(function(){
     	}
     });
 
+	/*
+		functions to check arguments
+    */
+    function getsLoc() {
+    	var sLoc =  $("#sLoc_input").val();
+    	if(sLoc) {
+    		if(server_good) {
+    			return sLoc;
+    		}
+    		else {
+    			logToConsole("Please Check Connection");
+    		}
+    	}
+    	else {
+    		logToConsole("Please Specify Server Location");
+    	}
+    	return null;
+    }
+    function getFS() {
+    	var fsName =  $("#fsName_input").val();
+    	if(fsName) {
+    		if(fs_good) {
+    			return fsName;
+    		}
+    		else {
+    			logToConsole("Please Set File System");
+    		}
+    	}
+    	else {
+    		logToConsole("Please Specify File System Name");
+    	}
+    	return null;
+    }
+    function getPatterns() {
+    	var patterns = $("#patterns_input").val();
+    	if(patterns) {
+    		return patterns;
+    	}
+    	logToConsole("Please Specify SQL Patterns to search for files");
+    	return null;
+    }
+
     /*
     	Search functionality
     */
     var server_files = [];
     var fs_files = [];
     $("#search_button").click(function(){
-    	var fsName = $("#fsName_input").val();
-    	var sLoc = $("#sLoc_input").val();
-    	if(fsName) {
-    		$.get("search_fs", {fsName:fsName}, function(data){
-    			// get data
-				logToConsole(data.statusText);
-			})
-			.fail(function(data){
-				logToConsole("Error "+data.status+": "+data.statusText);
-			})
-    	}
-    	if(sLoc) {
-    		$.get("search_server", {sLoc:sLoc}, function(data){
-    			// get data
-				logToConsole(data.statusText);
-			})
-			.fail(function(data){
-				logToConsole("Error "+data.status+": "+data.statusText);
-			})
-    	}
-    	if(!(fsName || sLoc)) {
-    		logToConsole("Please specify either File System Name or Server Location");
+    	var fsName = getFS();
+    	var sLoc = getsLoc();
+    	var patterns = getPatterns();
+
+    	if(patterns) {
+    		if(fsName) {
+    			logToConsole("Searching File System...");
+	    		$.get("search_fs", {fsName:fsName, patterns:patterns}, function(data){
+	    			// get data
+					logToConsole(data.statusText);
+					console.log(data.L);
+				})
+				.fail(function(data){
+					logToConsole("Error "+data.status+": "+data.statusText);
+				})
+	    	}
+	    	if(sLoc) {
+	    		logToConsole("Searching server...");
+	    		$.get("search_server", {sLoc:sLoc, patterns:patterns}, function(data){
+	    			// get data
+	    			console.log(data.T);
+					logToConsole(data.statusText);
+				})
+				.fail(function(data){
+					logToConsole("Error "+data.status+": "+data.statusText);
+				})
+	    	}
     	}
     })
 
@@ -145,7 +192,7 @@ $(function(){
 			})
 		}
 		else {
-			logToConsole("Please specify File System Name");
+			logToConsole("Please Specify File System Name");
 		}
 	});
 
@@ -155,7 +202,7 @@ $(function(){
 		Logs reply.
 	*/
 	$("#mount_fs").click(function(){
-		var fsName = $("#fsName_input").val();
+		var fsName = getFS();
 		if(fsName) {
 			$.post("mount_fs", {fsName:fsName}, function(data){
 				logToConsole(data.statusText);
@@ -163,9 +210,6 @@ $(function(){
 			.fail(function(data){
 				logToConsole("Error "+data.status+": "+data.statusText);
 			})
-		}
-		else {
-			logToConsole("Please specify File System Name");
 		}
 	});
 
@@ -189,7 +233,7 @@ $(function(){
 			})
 		}
 		else {
-			logToConsole("Please specify Server Location");
+			logToConsole("Please Specify Server Location");
 		}
 	});
 
@@ -199,9 +243,9 @@ $(function(){
 		Logs reply.
 	*/
 	$("#get_files").click(function(){
-		var fsName = $("#fsName_input").val();
-		var sLoc = $("#sLoc_input").val();
-		var patterns = $("#patterns_input").val();
+		var fsName = getFS();
+		var sLoc = getsLoc();
+		var patterns = getPatterns();
 		if(fsName && sLoc && patterns) {
 			logToConsole("Getting files with pattern(s) " + patterns + "...");
 			$.post("get_files", {sLoc:sLoc, fsName:fsName, patterns:patterns}, function(data){
@@ -211,15 +255,6 @@ $(function(){
 				logToConsole("Error "+data.status+": "+data.statusText);
 			})
 		}
-		else if (!fsName) {
-			logToConsole("Please specify File System Name");
-		}
-		else if (!sLoc) {
-			logToConsole("Please specify Server Location");
-		}
-		else if (!patterns) {
-			logToConsole("Please specify SQL patterns to match files for download (eg. 'file%' to download all files starting with 'file')");
-		}
 	});
 
 	/*
@@ -228,8 +263,8 @@ $(function(){
 		Logs reply.
 	*/
 	$("#get_fs").click(function(){
-		var fsName = $("#fsName_input").val();
-		var sLoc = $("#sLoc_input").val();
+		var fsName = getFS();
+		var sLoc = getsLoc();
 		if(fsName && sLoc) {
 			logToConsole("Downloading " + fsName + "...");
 			$.post("get_fs", {sLoc:sLoc, fsName:fsName}, function(data){
@@ -239,12 +274,6 @@ $(function(){
 				logToConsole("Error "+data.status+": "+data.statusText);
 			})
 		}
-		else if(!fsName) {
-			logToConsole("Please specify File System Name");
-		}
-		else if(!sLoc) {
-			logToConsole("Please specify Server Location");
-		}
 	});
 
 	/*
@@ -253,11 +282,10 @@ $(function(){
 		Logs reply.
 	*/
 	$("#post_files").click(function(){
-		var fsName = $("#fsName_input").val();
-		var sLoc = $("#sLoc_input").val();
-		var patterns = $("#patterns_input").val();
+		var fsName = getFS();
+		var sLoc = getsLoc();
+		var patterns = getPatterns();
 		var force = $("#post_files_force").is(':checked')?1:0;
-		var keep = $("#post_files_keep").is(':checked')?1:0;
 		if(fsName && sLoc && patterns) {
 			logToConsole("Uploading files with pattern(s) " + patterns + "...");
 			$.post("post_files", {sLoc:sLoc, fsName:fsName, patterns:patterns, force:force, keep:keep}, function(data){
@@ -267,15 +295,6 @@ $(function(){
 				logToConsole("Error "+data.status+": "+data.statusText);
 			})
 		}
-		else if(!fsName) {
-			logToConsole("Please specify File System Name");
-		}
-		else if(!sLoc) {
-			logToConsole("Please specify Server Location");
-		}
-		else if(!patterns) {
-			logToConsole("Please specify SQL patterns to match files for upload (eg. 'file%' to upload all files starting with 'file')");
-		}
 	});
 
 	/*
@@ -284,8 +303,8 @@ $(function(){
 		Logs reply.
 	*/
 	$("#post_fs").click(function(){
-		var fsName = $("#fsName_input").val();
-		var sLoc = $("#sLoc_input").val();
+		var fsName = getFS();
+		var sLoc = getsLoc();
 		if(fsName && sLoc) {
 			logToConsole("Uploading " + fsName + "...");
 			$.post("post_fs", {sLoc:sLoc, fsName:fsName}, function(data){
@@ -294,12 +313,6 @@ $(function(){
 			.fail(function(data){
 				logToConsole("Error "+data.status+": "+data.statusText);
 			})
-		}
-		else if(!fsName) {
-			logToConsole("Please specify File System Name");
-		}
-		else if(!sLoc) {
-			logToConsole("Please specify Server Location");
 		}
 	});
 

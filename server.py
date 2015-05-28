@@ -172,6 +172,26 @@ class PostFSHandler(RequestHandler):
 		else:
 			self.write({"status":0, "statusText":"Uploaded " + fsName})
 
+class SearchFSHandler(RequestHandler):
+	def get(self):
+		self.set_header("Content-Type", "text/plain")
+		fsName = self.get_argument("fsName")
+		patterns = self.get_argument("patterns").split()
+
+		L = getFSList(fsName, patterns)
+		self.write({"status":0, "statusText":"Found File System Files", "L":L})
+
+
+class SearchServerHandler(RequestHandler):
+	def get(self):
+		self.set_header("Content-Type", "text/plain")
+		sLoc = self.get_argument("sLoc")
+		patterns = self.get_argument("patterns").split()
+
+		T = getServerList(sLoc, patterns)
+		self.write({"status":0, "statusText":"Found Server Files", "T":T})
+		
+
 def make_app():
 
 	settings = {
@@ -183,6 +203,8 @@ def make_app():
 		url(r"/create_fs", CreateFSHandler),
 		url(r"/mount_fs", MountFSHandler),
 		url(r"/check_server", CheckServerHandler),
+		url(r"/search_fs", SearchFSHandler),
+		url(r"/search_server", SearchServerHandler),
 		url(r"/get_files", GetFilesHandler),
 		url(r"/get_fs", GetFSHandler),
 		url(r"/post_files", PostFilesHandler),

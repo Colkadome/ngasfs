@@ -80,19 +80,26 @@ USE CASES:
 - uploads file1.txt anyway, because its likely not the same file.
 """
 def postFiles(sLoc, fsName, patterns, verbose=True, force=False):
-	postFilesWithList(sLoc, fsName, getFSList(fsName, patterns), verbose, force)
+	L = getFSList(fsName, patterns)
+	L_ids = []
+	for l in L:
+		L_ids.append(l["id"])
+	postFilesWithList(sLoc, fsName, L_ids, verbose, force)
 
 """
 postFilesWithList()
 -----------------------
 Posts files using a list of files.
-
 """
-def postFilesWithList(sLoc, fsName, L, verbose=True, force=False):
+def postFilesWithList(sLoc, fsName, L_ids, verbose=True, force=False):
+
+	# connect to fs
+	con = initFS(fsName)
 
 	# iterate through list
 	uploadCount = 0
-	for f in L:
+	for f_id in L_ids:
+		f = con.File.get(f_id)
 		if f.server_loc==None or force:
 			if f.on_local:
 				# print stuff
@@ -121,7 +128,8 @@ getFSList()
 -----------------------
 Gets a list of files from the FS.
 Not all files returned are suitable for upload, but are files
-the user will want to know about
+the user will want to know about.
+The returned list is JSON serializable!
 """
 def getFSList(fsName, patterns):
 
@@ -136,7 +144,9 @@ def getFSList(fsName, patterns):
 	for pattern in patterns:
 		for f in con.File.select(LIKE(con.File.q.name, pattern)):
 			if not f._isDir() and not f._is_FS_file() and f.id not in ignore:
-				L.append(f)
+				L.append({"id":f.id, "name":f.name, "path":f.path,
+					"st_size":f.st_size, "st_mtime":f.st_mtime,
+					"server_loc":f.server_loc})
 				ignore.add(f.id)
 
 	# close FS connection and return

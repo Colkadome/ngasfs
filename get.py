@@ -15,6 +15,7 @@ from tables import *
 getServerList()
 -----------------------
 Returns a numpy list of files, sorted by version number.
+The returned list is JSON serializable!
 
 ARGS:
 sLoc        - server address string (e.g. "http://ec2-54-152-35-198.compute-1.amazonaws.com:7777/")
