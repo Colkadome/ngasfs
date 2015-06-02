@@ -14,7 +14,7 @@ from tables import *
 """
 getServerList()
 -----------------------
-Returns a numpy list of files, sorted by version number.
+Returns a numpy list of files, sorted by date created.
 The returned list is JSON serializable!
 
 ARGS:
@@ -23,7 +23,7 @@ sLoc        - server address string (e.g. "http://ec2-54-152-35-198.compute-1.am
 patterns    - array of patterns to match NGAS files to.
                 Files are matched using SQL query: "SELECT file WHERE file_id LIKE pattern"
 RETURN:
-numpy array of files, sorted by descending version
+numpy array of files, sorted by descending creation date
 """
 def getServerList(sLoc, patterns):
 
@@ -33,10 +33,10 @@ def getServerList(sLoc, patterns):
         T = numpy.append(T, atpy.Table(sLoc + 'QUERY?query=files_like&format=list&like=' + pattern, type='ascii')[3:])
 
     T = numpy.unique(T) # remove duplicate entries
-    T.sort(order='col4') # sort by file version
+    T.sort(order='col14') # sort by file date
     T = T[::-1] # sort by descending
 
-    return T
+    return T.tolist()   # must be standard array for JSON serialization
 
 """
 getFilesFromList()
@@ -59,35 +59,35 @@ def getFilesFromList(sLoc, fsName, T, verbose=True):
     for entry in con.File.select():
         ignore.add(entry.name)
 
-    # get various columns
-    names = T['col3']
-    cTimes = T['col14']
-    iTimes = T['col9']
-    sizes = T['col6']
-    versions = T['col4']
+    # define various columns
+    name = 2
+    cTime = 13
+    iTime = 8
+    size = 5
+    version = 3
 
     # add entries that are not in DB, or have not been added previously.
     uploadCount = 0
-    for i in range(len(T)):
-        if names[i] not in ignore:
-            if not names[i].endswith(".sqlite"):
-                print "Adding: " + names[i] + " [" + versions[i] + "]"
-                ignore.add(names[i])
+    for t in T:
+        if t[name] not in ignore:
+            if not t[name].endswith(".sqlite"):
+                print "Adding: " + t[name] + " [" + t[version] + "]"
+                ignore.add(t[name])
                 uploadCount += 1
 
                 # get time attributes
-                cTime = mktime(datetime.datetime.strptime(cTimes[i].replace("T", " "), "%Y-%m-%d %H:%M:%S.%f").timetuple())
-                iTime = mktime(datetime.datetime.strptime(iTimes[i].replace("T", " "), "%Y-%m-%d %H:%M:%S.%f").timetuple())
+                cTimeInt = mktime(datetime.datetime.strptime(t[cTime].replace("T", " "), "%Y-%m-%d %H:%M:%S.%f").timetuple())
+                iTimeInt = mktime(datetime.datetime.strptime(t[iTime].replace("T", " "), "%Y-%m-%d %H:%M:%S.%f").timetuple())
 
                 # add file to SQL database
-                con.File(name=str(names[i]), path="/", st_mode=33060, st_nlink=1,
-                    st_size=sizes[i], st_ctime=cTime, st_mtime=iTime,
-                    st_atime=iTime, st_uid=0, st_gid=0,
+                con.File(name=t[name], path="/", st_mode=33060, st_nlink=1,
+                    st_size=int(t[size]), st_ctime=cTimeInt, st_mtime=iTimeInt,
+                    st_atime=iTimeInt, st_uid=0, st_gid=0,
                     server_loc=sLoc, attrs={}, on_local=False)
             else:
-                print "Ignoring: " + names[i] + " [" + versions[i] + "], is sqlite file"
+                print "Ignoring: " + t[name] + " [" + t[version] + "], is sqlite file"
         else:
-            print "Ignoring: " + names[i] + " [" + versions[i] + "]"
+            print "Ignoring: " + t[name] + " [" + t[version] + "]"
 
     # close connection
     con.close()

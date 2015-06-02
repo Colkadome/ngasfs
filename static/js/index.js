@@ -138,10 +138,61 @@ $(function(){
     }
 
     /*
-    	Search functionality
+    	files list functionality
     */
     var server_files = [];
     var fs_files = [];
+
+    function populateServerList(T) {
+
+    	server_files = T;
+    	var sList = $("#server_files_list");
+    	sList.empty();
+
+    	for(var i=0; i<T.length; i++) {
+    		sList.append('<tr active="true"><td>'+T[i][2]+'</td><td>'+T[i][3]+'</td><td>'+T[i][5]+'</td><td>'+T[i][13]+'</td></tr>');
+    	}
+    }
+	$(".clickable_table").on('click', 'tr', function() {
+		if ($(this).attr('active'))
+			$(this).removeAttr('active');
+		else
+			$(this).attr('active', true);
+	});
+
+	/*
+		Download Files button.
+		Will send POST request to server.
+		Logs reply.
+	*/
+	$("#get_files").click(function(){
+		var sLoc = getsLoc();
+		var fsName = getFS();
+		if(fsName && sLoc) {
+			var T = [];
+			$("#server_files_list tr[active]").each(function() {
+				T.push(server_files[$(this).index()]);
+			});
+
+			if(T.length > 0) {
+				logToConsole("Adding Server files to FS...");
+				console.log(T);
+				$.post("get_files", {sLoc:sLoc, fsName:fsName, T:JSON.stringify(T)}, function(data){
+					logToConsole(data.status+": "+data.statusText);
+				})
+				.fail(function(data){
+					logToConsole("Error "+data.status+": "+data.statusText);
+				})
+			}
+			else {
+				logToConsole("Please select Server file(s) to add to FS");
+			}
+		}
+	});
+
+    /*
+    	Search functionality
+    */
     $("#search_button").click(function(){
     	var fsName = getFS();
     	var sLoc = getsLoc();
@@ -152,8 +203,10 @@ $(function(){
     			logToConsole("Searching File System...");
 	    		$.get("search_fs", {fsName:fsName, patterns:patterns}, function(data){
 	    			// get data
-					logToConsole(data.statusText);
+					logToConsole(data.status+": "+data.statusText);
 					console.log(data.L);
+					// add to table
+					populateFSList(data.L);
 				})
 				.fail(function(data){
 					logToConsole("Error "+data.status+": "+data.statusText);
@@ -163,8 +216,10 @@ $(function(){
 	    		logToConsole("Searching server...");
 	    		$.get("search_server", {sLoc:sLoc, patterns:patterns}, function(data){
 	    			// get data
-	    			console.log(data.T);
-					logToConsole(data.statusText);
+					logToConsole(data.status+": "+data.statusText);
+					console.log(data.T);
+					// add to table
+					populateServerList(data.T);
 				})
 				.fail(function(data){
 					logToConsole("Error "+data.status+": "+data.statusText);
@@ -185,7 +240,7 @@ $(function(){
 				if(status==0) {
 					enableFStools();
 				}
-				logToConsole(data.statusText);
+				logToConsole(data.status+": "+data.statusText);
 			})
 			.fail(function(data){
 				logToConsole("Error "+data.status+": "+data.statusText);
@@ -205,7 +260,7 @@ $(function(){
 		var fsName = getFS();
 		if(fsName) {
 			$.post("mount_fs", {fsName:fsName}, function(data){
-				logToConsole(data.statusText);
+				logToConsole(data.status+": "+data.statusText);
 			})
 			.fail(function(data){
 				logToConsole("Error "+data.status+": "+data.statusText);
@@ -223,7 +278,7 @@ $(function(){
 		if(sLoc) {
 			logToConsole("Checking server...");
 			$.get("check_server", {sLoc:sLoc}, function(data){
-				logToConsole(data.status + ": " + data.statusText);
+				logToConsole(data.status+": "+data.statusText);
 				if(data.status == 200) {
 					enableServerTools();
 				}
@@ -242,33 +297,13 @@ $(function(){
 		Will send POST request to server.
 		Logs reply.
 	*/
-	$("#get_files").click(function(){
-		var fsName = getFS();
-		var sLoc = getsLoc();
-		var patterns = getPatterns();
-		if(fsName && sLoc && patterns) {
-			logToConsole("Getting files with pattern(s) " + patterns + "...");
-			$.post("get_files", {sLoc:sLoc, fsName:fsName, patterns:patterns}, function(data){
-				logToConsole(data.statusText);
-			})
-			.fail(function(data){
-				logToConsole("Error "+data.status+": "+data.statusText);
-			})
-		}
-	});
-
-	/*
-		Download Files button.
-		Will send POST request to server.
-		Logs reply.
-	*/
 	$("#get_fs").click(function(){
 		var fsName = getFS();
 		var sLoc = getsLoc();
 		if(fsName && sLoc) {
 			logToConsole("Downloading " + fsName + "...");
 			$.post("get_fs", {sLoc:sLoc, fsName:fsName}, function(data){
-				logToConsole(data.statusText);
+				logToConsole(data.status+": "+data.statusText);
 			})
 			.fail(function(data){
 				logToConsole("Error "+data.status+": "+data.statusText);
@@ -289,7 +324,7 @@ $(function(){
 		if(fsName && sLoc && patterns) {
 			logToConsole("Uploading files with pattern(s) " + patterns + "...");
 			$.post("post_files", {sLoc:sLoc, fsName:fsName, patterns:patterns, force:force, keep:keep}, function(data){
-				logToConsole(data.statusText);
+				logToConsole(data.status+": "+data.statusText);
 			})
 			.fail(function(data){
 				logToConsole("Error "+data.status+": "+data.statusText);
@@ -308,7 +343,7 @@ $(function(){
 		if(fsName && sLoc) {
 			logToConsole("Uploading " + fsName + "...");
 			$.post("post_fs", {sLoc:sLoc, fsName:fsName}, function(data){
-				logToConsole(data.statusText);
+				logToConsole(data.status+": "+data.statusText);
 			})
 			.fail(function(data){
 				logToConsole("Error "+data.status+": "+data.statusText);

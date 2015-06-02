@@ -12,11 +12,21 @@
 	margin-bottom: 0px;
 }
 
-.scroll_list {
+.scroll_box {
 	border: 1px solid #ccc;
-	padding: 6px 12px;
 	overflow-y: scroll;
-	height: 200px;
+	height: 300px;
+}
+
+.clickable_table tr {
+	cursor: pointer;
+}
+.clickable_table tr[active] {
+	background-color: #E5F2FF;
+}
+
+.table {
+	margin-bottom: 0px;
 }
 
 .dropdown_button {

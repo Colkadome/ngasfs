@@ -7,6 +7,7 @@ import os
 import string
 import random
 from multiprocessing import Process
+import json
 
 from tornado.ioloop import IOLoop
 from tornado.httpserver import HTTPServer
@@ -97,9 +98,9 @@ class MountFSHandler(RequestHandler):
 class GetFilesHandler(RequestHandler):
 	def post(self):
 		self.set_header("Content-Type", "text/plain")
-		sLoc = self.get_body_argument("sLoc")
 		fsName = self.get_body_argument("fsName")
-		patterns = self.get_body_argument("patterns").split()
+		sLoc = self.get_body_argument("sLoc")
+		T = json.loads(self.get_body_argument("T"))	# JSON used for objects
 
 		# check if fs exists
 		if not fsName.endswith('.sqlite'):
@@ -108,8 +109,8 @@ class GetFilesHandler(RequestHandler):
 			self.write({"status":1, "statusText":fsName + " does not exist"})
 			return
 
-		# get files
-		count = getFiles(sLoc, fsName, patterns)
+		# add files
+		count = getFilesFromList(sLoc, fsName, T)
 
 		# return response
 		self.write({"status":0, "statusText":str(count) + " file(s) added to " + fsName})
