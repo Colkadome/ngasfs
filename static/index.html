@@ -27,6 +27,7 @@
 					</div>
 					<span title="Creates FS" type="submit" id="create_fs" class="btn btn-default">Create/Set FS</span>
 					<span type="submit" id="mount_fs" class="btn btn-default">Mount/Unmount FS</span>
+					<span type="submit" id="clean_fs" class="btn btn-default">Clean FS</span>
 				</div>
 				<!--- MAKE CLEAN BUTTON -->
 				<!--- ADD BROWSE FS (%.sqlite), AND FILES BUTTON -->
@@ -71,7 +72,17 @@
 				</div>
 				<div class="col-xs-6">
 					<b>FS Files</b>
-					<div id="fs_files_list" class="scroll_box">
+					<table class="table">
+						<tr>
+							<th>File</th>
+							<th>Size</th>
+							<th>Date</th>
+							<th>Server</th>
+						</tr>
+					</table>
+					<div class="scroll_box">
+						<table id="fs_files_list" class="table clickable_table">
+						</table>
 					</div>
 					<span type="submit" id="post_files" class="btn btn-default fs_reliant server_reliant"><span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span> Add Files to Server</span>
 				</div>

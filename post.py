@@ -99,7 +99,7 @@ def postFilesWithList(sLoc, fsName, L_ids, verbose=True, force=False):
 	# iterate through list
 	uploadCount = 0
 	for f_id in L_ids:
-		f = con.File.get(f_id)
+		f = con.File.get(f_id)	# SOMETIMES DOES NOT ACCESS DATABASE!!!!
 		if f.server_loc==None or force:
 			if f.on_local:
 				# print stuff
@@ -115,6 +115,9 @@ def postFilesWithList(sLoc, fsName, L_ids, verbose=True, force=False):
 				print "Ignoring: " + f._path() + ", not on local."
 		else:
 			print "Ignoring: " + f._path() + ", exists on server." #checksum check?
+
+	# close connection
+	con.close()
 
 	# print info for the user
 	if uploadCount > 0:
@@ -144,7 +147,7 @@ def getFSList(fsName, patterns):
 	for pattern in patterns:
 		for f in con.File.select(LIKE(con.File.q.name, pattern)):
 			if not f._isDir() and not f._is_FS_file() and f.id not in ignore:
-				L.append({"id":f.id, "name":f.name, "path":f.path,
+				L.append({"id":f.id, "name":f.name,
 					"st_size":f.st_size, "st_mtime":f.st_mtime,
 					"server_loc":f.server_loc})
 				ignore.add(f.id)

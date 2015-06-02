@@ -142,15 +142,20 @@ $(function(){
     */
     var server_files = [];
     var fs_files = [];
-
     function populateServerList(T) {
-
     	server_files = T;
     	var sList = $("#server_files_list");
     	sList.empty();
-
     	for(var i=0; i<T.length; i++) {
-    		sList.append('<tr active="true"><td>'+T[i][2]+'</td><td>'+T[i][3]+'</td><td>'+T[i][5]+'</td><td>'+T[i][13]+'</td></tr>');
+    		sList.append('<tr><td>'+T[i][2]+'</td><td>'+T[i][3]+'</td><td>'+T[i][5]+'</td><td>'+T[i][13]+'</td></tr>');
+    	}
+    }
+    function populateFSList(L) {
+    	fs_files = L;
+    	var fsList = $("#fs_files_list");
+    	fsList.empty();
+    	for(var i=0; i<L.length; i++) {
+    		fsList.append('<tr><td>'+L[i].name+'</td><td>'+L[i].st_size+'</td><td>'+L[i].st_mtime+'</td><td>'+L[i].server_loc+'</td></tr>');
     	}
     }
 	$(".clickable_table").on('click', 'tr', function() {
@@ -158,6 +163,36 @@ $(function(){
 			$(this).removeAttr('active');
 		else
 			$(this).attr('active', true);
+	});
+
+	/*
+		Upload Files button.
+		Will send POST request to server.
+		Logs reply.
+	*/
+	$("#post_files").click(function(){
+		var fsName = getFS();
+		var sLoc = getsLoc();
+		var force = $("#post_files_force").is(':checked')?1:0;
+		if(fsName && sLoc) {
+			var ids = [];
+			$("#fs_files_list tr[active]").each(function() {
+				ids.push(fs_files[$(this).index()].id);
+			});
+
+			if(ids.length > 0) {
+				logToConsole("Uploading files ...");
+				$.post("post_files", {sLoc:sLoc, fsName:fsName, force:force, ids:JSON.stringify(ids)}, function(data){
+					logToConsole(data.status+": "+data.statusText);
+				})
+				.fail(function(data){
+					logToConsole("Error "+data.status+": "+data.statusText);
+				})
+			}
+			else {
+				logToConsole("Please select File(s) to upload to Server");
+			}
+		}
 	});
 
 	/*
@@ -176,7 +211,6 @@ $(function(){
 
 			if(T.length > 0) {
 				logToConsole("Adding Server files to FS...");
-				console.log(T);
 				$.post("get_files", {sLoc:sLoc, fsName:fsName, T:JSON.stringify(T)}, function(data){
 					logToConsole(data.status+": "+data.statusText);
 				})
@@ -204,7 +238,6 @@ $(function(){
 	    		$.get("search_fs", {fsName:fsName, patterns:patterns}, function(data){
 	    			// get data
 					logToConsole(data.status+": "+data.statusText);
-					console.log(data.L);
 					// add to table
 					populateFSList(data.L);
 				})
@@ -217,7 +250,6 @@ $(function(){
 	    		$.get("search_server", {sLoc:sLoc, patterns:patterns}, function(data){
 	    			// get data
 					logToConsole(data.status+": "+data.statusText);
-					console.log(data.T);
 					// add to table
 					populateServerList(data.T);
 				})
@@ -269,6 +301,23 @@ $(function(){
 	});
 
 	/*
+		Mount FS button.
+		Will send POST request to server.
+		Logs reply.
+	*/
+	$("#clean_fs").click(function(){
+		var fsName = getFS();
+		if(fsName) {
+			$.post("clean_fs", {fsName:fsName}, function(data){
+				logToConsole(data.status+": "+data.statusText);
+			})
+			.fail(function(data){
+				logToConsole("Error "+data.status+": "+data.statusText);
+			})
+		}
+	});
+
+	/*
 		Check Connection button.
 		Will send POST request to server.
 		Logs reply.
@@ -303,27 +352,6 @@ $(function(){
 		if(fsName && sLoc) {
 			logToConsole("Downloading " + fsName + "...");
 			$.post("get_fs", {sLoc:sLoc, fsName:fsName}, function(data){
-				logToConsole(data.status+": "+data.statusText);
-			})
-			.fail(function(data){
-				logToConsole("Error "+data.status+": "+data.statusText);
-			})
-		}
-	});
-
-	/*
-		Upload Files button.
-		Will send POST request to server.
-		Logs reply.
-	*/
-	$("#post_files").click(function(){
-		var fsName = getFS();
-		var sLoc = getsLoc();
-		var patterns = getPatterns();
-		var force = $("#post_files_force").is(':checked')?1:0;
-		if(fsName && sLoc && patterns) {
-			logToConsole("Uploading files with pattern(s) " + patterns + "...");
-			$.post("post_files", {sLoc:sLoc, fsName:fsName, patterns:patterns, force:force, keep:keep}, function(data){
 				logToConsole(data.status+": "+data.statusText);
 			})
 			.fail(function(data){

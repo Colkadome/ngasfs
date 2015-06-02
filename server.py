@@ -63,6 +63,24 @@ class CreateFSHandler(RequestHandler):
 		# return response message
 		self.write({"status":0, "statusText":"Created " + fsName})
 
+class CleanFSHandler(RequestHandler):
+	def post(self):
+		self.set_header("Content-Type", "text/plain")
+		fsName = self.get_body_argument("fsName")
+
+		# check if file already exists
+		if not fsName.endswith('.sqlite'):
+			fsName = fsName + ".sqlite"
+		if not os.path.isfile(fsName):
+			self.write({"status":1, "statusText":fsName + " does not exist"})
+			return
+
+		# clean FS
+		cleanFS(fsName)
+
+		# return response message
+		self.write({"status":0, "statusText":"Cleaned " + fsName})
+
 class MountFSHandler(RequestHandler):
 	def post(self):
 		self.set_header("Content-Type", "text/plain")
@@ -137,8 +155,8 @@ class PostFilesHandler(RequestHandler):
 		self.set_header("Content-Type", "text/plain")
 		sLoc = self.get_body_argument("sLoc")
 		fsName = self.get_body_argument("fsName")
-		patterns = self.get_body_argument("patterns").split()
 		force = int(self.get_body_argument("force"))
+		ids = json.loads(self.get_body_argument("ids"))	# JSON used for objects
 
 		# check if fs exists
 		if not fsName.endswith('.sqlite'):
@@ -148,7 +166,7 @@ class PostFilesHandler(RequestHandler):
 			return
 
 		# post files
-		count = postFiles(sLoc, fsName, patterns, True, force)
+		count = postFilesWithList(sLoc, fsName, ids, True, force)
 
 		# return response
 		self.write({"status":0, "statusText":str(count) + " file(s) added to " + sLoc})
@@ -203,6 +221,7 @@ def make_app():
 	handlers = [
 		url(r"/create_fs", CreateFSHandler),
 		url(r"/mount_fs", MountFSHandler),
+		url(r"/clean_fs", CleanFSHandler),
 		url(r"/check_server", CheckServerHandler),
 		url(r"/search_fs", SearchFSHandler),
 		url(r"/search_server", SearchServerHandler),
