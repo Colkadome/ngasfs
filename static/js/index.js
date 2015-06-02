@@ -13,17 +13,6 @@ $(function(){
 		$('#console').scrollTop($('#console')[0].scrollHeight);
 	}
 
-	/*
-		Window resize event
-	*/
-	$(window).resize(function(){
-        var windowH = $(window).height();
-        $('#console').css('height', (windowH - 330)+'px');
-    })
-
-	// Trigger resize to resize console
-    $(window).trigger('resize');
-
     /*
 		FS files list dropdown button
     */
