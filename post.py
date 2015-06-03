@@ -89,7 +89,7 @@ def postFiles(sLoc, fsName, patterns, verbose=True, force=False):
 """
 postFilesWithList()
 -----------------------
-Posts files using a list of files.
+Posts files using a list of file IDs.
 """
 def postFilesWithList(sLoc, fsName, L_ids, verbose=True, force=False):
 
@@ -99,7 +99,8 @@ def postFilesWithList(sLoc, fsName, L_ids, verbose=True, force=False):
 	# iterate through list
 	uploadCount = 0
 	for f_id in L_ids:
-		f = con.File.get(f_id)	# SOMETIMES DOES NOT ACCESS DATABASE!!!!
+		# f = con.File.get(f_id) # SOMETIMES DOES NOT ACCESS DATABASE!! it tries to be clever.
+		f = con.File.select(con.File.q.id==f_id).getOne() # quick fix for above problem
 		if f.server_loc==None or force:
 			if f.on_local:
 				# print stuff
@@ -129,7 +130,7 @@ def postFilesWithList(sLoc, fsName, L_ids, verbose=True, force=False):
 """
 getFSList()
 -----------------------
-Gets a list of files from the FS.
+Gets a list of file information from the FS.
 Not all files returned are suitable for upload, but are files
 the user will want to know about.
 The returned list is JSON serializable!
@@ -145,7 +146,7 @@ def getFSList(fsName, patterns):
 	# iterate through patterns
 	L = list()
 	for pattern in patterns:
-		for f in con.File.select(LIKE(con.File.q.name, pattern)):
+		for f in con.File.select(LIKE(con.File.q.name, pattern)).orderBy('name'):
 			if not f._isDir() and not f._is_FS_file() and f.id not in ignore:
 				L.append({"id":f.id, "name":f.name,
 					"st_size":f.st_size, "st_mtime":f.st_mtime,

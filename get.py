@@ -31,10 +31,16 @@ def getServerList(sLoc, patterns):
     T = atpy.Table(sLoc + 'QUERY?query=files_like&format=list&like=' + patterns[0], type='ascii')[3:]   # get everything past result 3
     for pattern in patterns[1:]:
         T = numpy.append(T, atpy.Table(sLoc + 'QUERY?query=files_like&format=list&like=' + pattern, type='ascii')[3:])
-
     T = numpy.unique(T) # remove duplicate entries
-    T.sort(order='col14') # sort by file date
-    T = T[::-1] # sort by descending
+
+    # sort by name, then date
+    T.sort(order=['col3', 'col14'])
+    T = T[::-1]
+
+    # remove all files except for latest versions (might not need this?)
+    for i in reversed(range(len(T))[1:]):
+        if T[i][2] == T[i-1][2]:
+            T = numpy.delete(T, i, 0)
 
     return T.tolist()   # must be standard array for JSON serialization
 

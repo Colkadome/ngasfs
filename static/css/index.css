@@ -25,9 +25,16 @@
 .clickable_table tr[active] {
 	background-color: #E5F2FF;
 }
+.clickable_table tr[active]:hover {
+	background-color: #D2E8FF;
+}
 
 .table {
 	margin-bottom: 0px;
+}
+
+.table td {
+	padding: 2px;
 }
 
 .dropdown_button {

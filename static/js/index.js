@@ -131,20 +131,42 @@ $(function(){
     */
     var server_files = [];
     var fs_files = [];
-    function populateServerList(T) {
-    	server_files = T;
-    	var sList = $("#server_files_list");
-    	sList.empty();
-    	for(var i=0; i<T.length; i++) {
-    		sList.append('<tr><td>'+T[i][2]+'</td><td>'+T[i][3]+'</td><td>'+T[i][5]+'</td><td>'+T[i][13]+'</td></tr>');
+    function refreshServerList() {
+    	var sLoc = getsLoc();
+    	var patterns = getPatterns();
+    	if(sLoc && patterns) {
+    		logToConsole("Searching server...");
+			$.get("search_server", {sLoc:sLoc, patterns:patterns}, function(data){
+				logToConsole(data.status+": "+data.statusText);
+				server_files = data.T;
+		    	var sList = $("#server_files_list");
+		    	sList.empty();
+		    	for(var i=0; i<server_files.length; i++) {
+		    		sList.append('<tr><td>'+server_files[i][2]+'</td><td>'+server_files[i][3]+'</td><td>'+server_files[i][5]+'</td><td>'+server_files[i][13]+'</td></tr>');
+		    	}
+			})
+			.fail(function(data){
+				logToConsole("Error "+data.status+": "+data.statusText);
+			})
     	}
     }
-    function populateFSList(L) {
-    	fs_files = L;
-    	var fsList = $("#fs_files_list");
-    	fsList.empty();
-    	for(var i=0; i<L.length; i++) {
-    		fsList.append('<tr><td>'+L[i].name+'</td><td>'+L[i].st_size+'</td><td>'+L[i].st_mtime+'</td><td>'+L[i].server_loc+'</td></tr>');
+    function refreshFSList() {
+    	var fsName = getFS();
+    	var patterns = getPatterns();
+    	if(fsName && patterns) {
+    		logToConsole("Searching File System...");
+	    	$.get("search_fs", {fsName:fsName, patterns:patterns}, function(data){
+				logToConsole(data.status+": "+data.statusText);
+				fs_files = data.L;
+		    	var fsList = $("#fs_files_list");
+		    	fsList.empty();
+		    	for(var i=0; i<fs_files.length; i++) {
+		    		fsList.append('<tr><td>'+fs_files[i].name+'</td><td>'+fs_files[i].st_size+'</td><td>'+fs_files[i].st_mtime+'</td><td>'+fs_files[i].server_loc+'</td></tr>');
+		    	}
+			})
+			.fail(function(data){
+				logToConsole("Error "+data.status+": "+data.statusText);
+			})
     	}
     }
 	$(".clickable_table").on('click', 'tr', function() {
@@ -173,6 +195,8 @@ $(function(){
 				logToConsole("Uploading files ...");
 				$.post("post_files", {sLoc:sLoc, fsName:fsName, force:force, ids:JSON.stringify(ids)}, function(data){
 					logToConsole(data.status+": "+data.statusText);
+					refreshFSList();
+					refreshServerList();
 				})
 				.fail(function(data){
 					logToConsole("Error "+data.status+": "+data.statusText);
@@ -202,6 +226,7 @@ $(function(){
 				logToConsole("Adding Server files to FS...");
 				$.post("get_files", {sLoc:sLoc, fsName:fsName, T:JSON.stringify(T)}, function(data){
 					logToConsole(data.status+": "+data.statusText);
+					refreshFSList();
 				})
 				.fail(function(data){
 					logToConsole("Error "+data.status+": "+data.statusText);
@@ -217,36 +242,8 @@ $(function(){
     	Search functionality
     */
     $("#search_button").click(function(){
-    	var fsName = getFS();
-    	var sLoc = getsLoc();
-    	var patterns = getPatterns();
-
-    	if(patterns) {
-    		if(fsName) {
-    			logToConsole("Searching File System...");
-	    		$.get("search_fs", {fsName:fsName, patterns:patterns}, function(data){
-	    			// get data
-					logToConsole(data.status+": "+data.statusText);
-					// add to table
-					populateFSList(data.L);
-				})
-				.fail(function(data){
-					logToConsole("Error "+data.status+": "+data.statusText);
-				})
-	    	}
-	    	if(sLoc) {
-	    		logToConsole("Searching server...");
-	    		$.get("search_server", {sLoc:sLoc, patterns:patterns}, function(data){
-	    			// get data
-					logToConsole(data.status+": "+data.statusText);
-					// add to table
-					populateServerList(data.T);
-				})
-				.fail(function(data){
-					logToConsole("Error "+data.status+": "+data.statusText);
-				})
-	    	}
-    	}
+    	refreshFSList();
+    	refreshServerList();
     })
 
 	/*
