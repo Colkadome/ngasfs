@@ -118,6 +118,14 @@ def cleanFS(fsName):
     con.close()
 
 """
+Function to check if FS exists
+"""
+def fsExists(fsName):
+    if not fsName.endswith('.sqlite'):
+        fsName = fsName + ".sqlite"
+    return os.path.isfile(fsName)
+
+"""
 Function to init the database
 """
 def initFS(fsName):

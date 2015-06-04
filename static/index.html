@@ -22,17 +22,6 @@
 			<div class="row">
 				<div class="col-xs-6">
 					<div class="form-group">
-						<label for="dbPath_input">File System Name</label>
-						<input type="text" class="form-control" id="fsName_input" placeholder="Enter FS Name">
-					</div>
-					<span title="Creates FS" type="submit" id="create_fs" class="btn btn-default">Create/Set FS</span>
-					<span type="submit" id="mount_fs" class="btn btn-default">Mount/Unmount FS</span>
-					<span type="submit" id="clean_fs" class="btn btn-default">Clean FS</span>
-				</div>
-				<!--- MAKE CLEAN BUTTON -->
-				<!--- ADD BROWSE FS (%.sqlite), AND FILES BUTTON -->
-				<div class="col-xs-6">
-					<div class="form-group">
 						<label for="sLoc_input">Server Location</label>
 						<input type="text" class="form-control" id="sLoc_input" placeholder="Enter Server Address" value="http://ec2-54-152-35-198.compute-1.amazonaws.com:7777/">
 					</div>
@@ -40,6 +29,15 @@
 					<span type="submit" id="get_fs" class="btn btn-default server_reliant">Download FS</span>
 					<span type="submit" id="post_fs" class="btn btn-default server_reliant fs_reliant">Upload FS</span>
 					<input type="checkbox" id="post_files_force"> Force Upload</input>
+				</div>
+				<div class="col-xs-6">
+					<div class="form-group">
+						<label for="dbPath_input">File System Name</label>
+						<input type="text" class="form-control" id="fsName_input" placeholder="Enter FS Name">
+					</div>
+					<span title="Creates FS" type="submit" id="create_fs" class="btn btn-default">Create/Set FS</span>
+					<span type="submit" id="mount_fs" class="btn btn-default">Mount/Unmount FS</span>
+					<span type="submit" id="clean_fs" class="btn btn-default">Clean FS</span>
 				</div>
 			</div>
 			<br/>

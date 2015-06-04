@@ -27,17 +27,24 @@ numpy array of files, sorted by descending creation date
 """
 def getServerList(sLoc, patterns):
 
-    # get entries from all patterns
-    T = atpy.Table(sLoc + 'QUERY?query=files_like&format=list&like=' + patterns[0], type='ascii')[3:]   # get everything past result 3
-    for pattern in patterns[1:]:
-        T = numpy.append(T, atpy.Table(sLoc + 'QUERY?query=files_like&format=list&like=' + pattern, type='ascii')[3:])
+    # specify dtype for numpy arrays. 'object' allows variable-length strings.
+    dtype = [('col1', object), ('col2', object), ('col3', object), ('col4', object),
+        ('col5', object), ('col6', object), ('col7', object), ('col8', object),
+        ('col9', object), ('col10', object), ('col11', object), ('col12', object),
+        ('col13', object), ('col14', object), ('col15', object)]
+
+    # iterate through patterns and get results
+    T = numpy.array([], dtype=dtype)
+    for pattern in patterns:
+        temp = atpy.Table(sLoc + 'QUERY?query=files_like&format=list&like=' + pattern, type='ascii')[3:]   # get everything past result 3
+        T = numpy.append(T, temp.astype(dtype=dtype))
     T = numpy.unique(T) # remove duplicate entries
 
     # sort by name, then date
     T.sort(order=['col3', 'col14'])
     T = T[::-1]
 
-    # remove all files except for latest versions (might not need this?)
+    # remove all files except for latest versions (might not want this?)
     for i in reversed(range(len(T))[1:]):
         if T[i][2] == T[i-1][2]:
             T = numpy.delete(T, i, 0)

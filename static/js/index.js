@@ -26,7 +26,6 @@ $(function(){
 		Code for dealing with activating buttons
     */
     var fs_good = false;
-    var last_fs = "";
     var server_good = false;
     var last_server = "";
     function enableFStools() {
@@ -67,10 +66,10 @@ $(function(){
     }
     $("#fsName_input").on("input", function(data) {
     	var fsName = $("#fsName_input").val();
-    	if(fs_good && fsName != last_fs) {
+    	if(!fsName) {
     		disableFStools();
     	}
-    	else if(fsName == last_fs) {
+    	else if(!fs_good && fsName) {
     		enableFStools();
     	}
     });
@@ -134,7 +133,7 @@ $(function(){
     function refreshServerList() {
     	var sLoc = getsLoc();
     	var patterns = getPatterns();
-    	if(sLoc && patterns) {
+    	if(sLoc && patterns && server_good) {
     		logToConsole("Searching server...");
 			$.get("search_server", {sLoc:sLoc, patterns:patterns}, function(data){
 				logToConsole(data.status+": "+data.statusText);
@@ -157,12 +156,14 @@ $(function(){
     		logToConsole("Searching File System...");
 	    	$.get("search_fs", {fsName:fsName, patterns:patterns}, function(data){
 				logToConsole(data.status+": "+data.statusText);
-				fs_files = data.L;
-		    	var fsList = $("#fs_files_list");
-		    	fsList.empty();
-		    	for(var i=0; i<fs_files.length; i++) {
-		    		fsList.append('<tr><td>'+fs_files[i].name+'</td><td>'+fs_files[i].st_size+'</td><td>'+fs_files[i].st_mtime+'</td><td>'+fs_files[i].server_loc+'</td></tr>');
-		    	}
+				if(data.status == 0) {
+					fs_files = data.L;
+			    	var fsList = $("#fs_files_list");
+			    	fsList.empty();
+			    	for(var i=0; i<fs_files.length; i++) {
+			    		fsList.append('<tr><td>'+fs_files[i].name+'</td><td>'+fs_files[i].st_size+'</td><td>'+fs_files[i].st_mtime+'</td><td>'+fs_files[i].server_loc+'</td></tr>');
+			    	}
+				}
 			})
 			.fail(function(data){
 				logToConsole("Error "+data.status+": "+data.statusText);
@@ -252,20 +253,14 @@ $(function(){
 		Logs reply.
 	*/
 	$("#create_fs").click(function(){
-		var fsName = $("#fsName_input").val();
+		var fsName = getFS();
 		if(fsName) {
 			$.post("create_fs", {fsName:fsName}, function(data){
-				if(status==0) {
-					enableFStools();
-				}
 				logToConsole(data.status+": "+data.statusText);
 			})
 			.fail(function(data){
 				logToConsole("Error "+data.status+": "+data.statusText);
 			})
-		}
-		else {
-			logToConsole("Please Specify File System Name");
 		}
 	});
 
