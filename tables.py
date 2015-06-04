@@ -126,7 +126,7 @@ def fsExists(fsName):
     return os.path.isfile(fsName)
 
 """
-Function to init the database
+Function to init a FS
 """
 def initFS(fsName):
     # check for the '.sqlite' extension on fsName

@@ -99,8 +99,8 @@ def postFilesWithList(sLoc, fsName, L_ids, verbose=True, force=False):
 	# iterate through list
 	uploadCount = 0
 	for f_id in L_ids:
-		# f = con.File.get(f_id) # SOMETIMES DOES NOT ACCESS DATABASE!! it tries to be clever.
-		f = con.File.select(con.File.q.id==f_id).getOne() # quick fix for above problem
+		f = con.File.get(f_id) 
+		f.expire()	# make sure cache is current
 		if f.server_loc==None or force:
 			if f.on_local:
 				# print stuff
@@ -148,6 +148,7 @@ def getFSList(fsName, patterns):
 	for pattern in patterns:
 		for f in con.File.select(LIKE(con.File.q.name, pattern)).orderBy('name'):
 			if not f._isDir() and not f._is_FS_file() and f.id not in ignore:
+				# get relevant file information
 				L.append({"id":f.id, "name":f.name,
 					"st_size":f.st_size, "st_mtime":f.st_mtime,
 					"server_loc":f.server_loc})
