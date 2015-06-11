@@ -148,6 +148,9 @@ $(function(){
 		    			sList.append('<tr><td>'+server_files[i][2]+'</td><td>'+server_files[i][3]+'</td><td>'+server_files[i][5]+'</td><td>'+server_files[i][13]+'</td></tr>');
 		    		}
 		    		$("#server_select_all").attr("disabled", false);
+		    		if(server_files.length > 1000) {
+		    			logToConsole("Warning: Server returned more than 1000 results");
+		    		}
 		    	}
 		    	else {
 		    		$("#server_select_all").attr("disabled", true);
@@ -174,6 +177,9 @@ $(function(){
 			    			fsList.append('<tr><td>'+fs_files[i].name+'</td><td>'+fs_files[i].st_size+'</td><td>'+fs_files[i].st_mtime+'</td><td>'+fs_files[i].server_loc+'</td></tr>');
 			    		}
 			    		$("#fs_select_all").attr("disabled", false);
+			    		if(fs_files.length > 1000) {
+		    				logToConsole("Warning: Server returned more than 1000 results");
+		    			}
 			    	}
 			    	else {
 			    		$("#fs_select_all").attr("disabled", true);
