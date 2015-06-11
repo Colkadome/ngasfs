@@ -28,7 +28,6 @@
 					<span type="submit" id="check_server" class="btn btn-default">Check Connection</span>
 					<span type="submit" id="get_fs" class="btn btn-default server_reliant">Download FS</span>
 					<span type="submit" id="post_fs" class="btn btn-default server_reliant fs_reliant">Upload FS</span>
-					<input type="checkbox" id="post_files_force"> Force Upload</input>
 				</div>
 				<div class="col-xs-6">
 					<div class="form-group">
@@ -66,7 +65,10 @@
 						<table id="server_files_list" class="table table-condensed clickable_table table-hover">
 						</table>
 					</div>
-					<span type="submit" id="get_files" class="btn btn-default fs_reliant server_reliant">Add Files to FS <span class="glyphicon glyphicon-arrow-right" aria-hidden="true"></span></span>
+					<span style="float:right;">
+						<span type="submit" id="server_select_all" class="btn btn-default">Select All</span>
+						<span type="submit" id="get_files" class="btn btn-default fs_reliant server_reliant">Add Files to FS <span class="glyphicon glyphicon-arrow-right" aria-hidden="true"></span></span>
+					</span>
 				</div>
 				<div class="col-xs-6">
 					<b>FS Files</b>
@@ -82,7 +84,11 @@
 						<table id="fs_files_list" class="table table-condensed clickable_table table-hover">
 						</table>
 					</div>
-					<span type="submit" id="post_files" class="btn btn-default fs_reliant server_reliant"><span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span> Add Files to Server</span>
+					<span>
+						<span type="submit" id="post_files" class="btn btn-default fs_reliant server_reliant"><span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span> Add Files to Server</span>
+						<span type="submit" id="fs_select_all" class="btn btn-default">Select All</span>
+						<input type="checkbox" id="post_files_force"> Force Upload</input>
+					</span>
 				</div>
 			</div>
 			<b>Console:</b>

@@ -5,6 +5,9 @@ $(function(){
 	$(".fs_reliant").attr("disabled", true);
 	$(".server_reliant").attr("disabled", true);
 
+	$("#fs_select_all").attr("disabled", true);
+	$("#server_select_all").attr("disabled", true);
+
 	/*
 		Function to log to console
 	*/
@@ -140,8 +143,14 @@ $(function(){
 				server_files = data.T;
 		    	var sList = $("#server_files_list");
 		    	sList.empty();
-		    	for(var i=0; i<server_files.length; i++) {
-		    		sList.append('<tr><td>'+server_files[i][2]+'</td><td>'+server_files[i][3]+'</td><td>'+server_files[i][5]+'</td><td>'+server_files[i][13]+'</td></tr>');
+		    	if(server_files.length) {
+		    		for(var i=0; i<server_files.length; i++) {
+		    			sList.append('<tr><td>'+server_files[i][2]+'</td><td>'+server_files[i][3]+'</td><td>'+server_files[i][5]+'</td><td>'+server_files[i][13]+'</td></tr>');
+		    		}
+		    		$("#server_select_all").attr("disabled", false);
+		    	}
+		    	else {
+		    		$("#server_select_all").attr("disabled", true);
 		    	}
 			})
 			.fail(function(data){
@@ -160,8 +169,14 @@ $(function(){
 					fs_files = data.L;
 			    	var fsList = $("#fs_files_list");
 			    	fsList.empty();
-			    	for(var i=0; i<fs_files.length; i++) {
-			    		fsList.append('<tr><td>'+fs_files[i].name+'</td><td>'+fs_files[i].st_size+'</td><td>'+fs_files[i].st_mtime+'</td><td>'+fs_files[i].server_loc+'</td></tr>');
+			    	if(fs_files.length) {
+			    		for(var i=0; i<fs_files.length; i++) {
+			    			fsList.append('<tr><td>'+fs_files[i].name+'</td><td>'+fs_files[i].st_size+'</td><td>'+fs_files[i].st_mtime+'</td><td>'+fs_files[i].server_loc+'</td></tr>');
+			    		}
+			    		$("#fs_select_all").attr("disabled", false);
+			    	}
+			    	else {
+			    		$("#fs_select_all").attr("disabled", true);
 			    	}
 				}
 			})
@@ -175,6 +190,34 @@ $(function(){
 			$(this).removeAttr('active');
 		else
 			$(this).attr('active', true);
+	});
+
+	/*
+		Select all buttons
+	*/
+	$("#server_select_all").click(function(){
+		if($("#server_files_list tr[active]").length == server_files.length) {
+			$("#server_files_list tr").each(function(){
+				$(this).removeAttr('active');
+			});
+		}
+		else {
+			$("#server_files_list tr").each(function(){
+				$(this).attr('active', true);
+			});
+		}
+	});
+	$("#fs_select_all").click(function(){
+		if($("#fs_files_list tr[active]").length == fs_files.length) {
+			$("#fs_files_list tr").each(function(){
+				$(this).removeAttr('active');
+			});
+		}
+		else {
+			$("#fs_files_list tr").each(function(){
+				$(this).attr('active', true);
+			});
+		}
 	});
 
 	/*
