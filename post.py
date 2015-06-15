@@ -10,26 +10,26 @@ from stat import S_IFDIR, S_ISDIR
 
 from tables import *
 
-"""
-postFS()
------------------------
-Posts a FS database, as well as the files, to a NGAS server.
-Will delete the raw_data and data_list tables from the FS database
-when upload is successful.
-
-ARGS:
-sLoc 		- server address string (e.g. "http://ec2-54-152-35-198.compute-1.amazonaws.com:7777/")
-				String should contain the trailing '/'.
-fsName 		- path to FS database sqlite3 file.
-options		- options.
-				"-f" force upload of files.
-				"-v" print server's response for each upload.
-
-RETURN:
-NOTES:
-this function may only need to use the SQL file. It might be tricky to upload with blocks though.
-"""
 def postFS(sLoc, fsName, verbose=True, force=False):
+	"""
+	postFS()
+	-----------------------
+	Posts a FS database, as well as the files, to a NGAS server.
+	Will delete the raw_data and data_list tables from the FS database
+	when upload is successful.
+	
+	ARGS:
+	sLoc 		- server address string (e.g. "http://ec2-54-152-35-198.compute-1.amazonaws.com:7777/")
+					String should contain the trailing '/'.
+	fsName 		- path to FS database sqlite3 file.
+	options		- options.
+					"-f" force upload of files.
+					"-v" print server's response for each upload.
+	
+	RETURN:
+	NOTES:
+	this function may only need to use the SQL file. It might be tricky to upload with blocks though.
+	"""
 
 	# check for the '.sqlite' extension on fsName
 	if not fsName.endswith('.sqlite'):
@@ -46,52 +46,52 @@ def postFS(sLoc, fsName, verbose=True, force=False):
 		print "WARNING: " + fsName + " was not uploaded!"
 	return status
 
-"""
-postFiles()
------------------------
-Posts multiple files from a FS mount to a NGAS server.
-Will select certain files to upload based on <patterns>.
-Will only upload files that do not already exist on the server.
-
-ARGS:
-sLoc 		- server address string (e.g. "http://ec2-54-152-35-198.compute-1.amazonaws.com:7777/")
-				String should contain the trailing '/'.
-dbPath 		- path to FS database sqlite3 file.
-patterns    - array of patterns to match files in the database.
-                Files are matched using SQL query: "SELECT file WHERE file_id LIKE pattern"
-options		- options
-				"-f" force upload of files.
-				"-v" print server's response for each upload.
-
-RETURN:
-
-NOTE:
-currently does not check if local files share an ID with a file on the server.
-If a local file has the same ID as a server file, the file is still uploaded.
-
-USE CASES:
-+ upload file1.txt, where file1.txt does not exist on server, but exists in FS.
-- should upload file1.txt and change the server_loc column in the FS to the server it was uploaded to.
-
-+ upload file1.txt, where file1.txt has an entry under server_loc in the FS.
-- file1.txt is ignored, as it already exists on a server.
-
-+ upload file1.txt, where the file has no server_loc entry, but the file exists on the server.
-- uploads file1.txt anyway, because its likely not the same file.
-"""
 def postFiles(sLoc, fsName, patterns, verbose=True, force=False):
+	"""
+	postFiles()
+	-----------------------
+	Posts multiple files from a FS mount to a NGAS server.
+	Will select certain files to upload based on <patterns>.
+	Will only upload files that do not already exist on the server.
+	
+	ARGS:
+	sLoc 		- server address string (e.g. "http://ec2-54-152-35-198.compute-1.amazonaws.com:7777/")
+					String should contain the trailing '/'.
+	dbPath 		- path to FS database sqlite3 file.
+	patterns    - array of patterns to match files in the database.
+	                Files are matched using SQL query: "SELECT file WHERE file_id LIKE pattern"
+	options		- options
+					"-f" force upload of files.
+					"-v" print server's response for each upload.
+	
+	RETURN:
+	
+	NOTE:
+	currently does not check if local files share an ID with a file on the server.
+	If a local file has the same ID as a server file, the file is still uploaded.
+	
+	USE CASES:
+	+ upload file1.txt, where file1.txt does not exist on server, but exists in FS.
+	- should upload file1.txt and change the server_loc column in the FS to the server it was uploaded to.
+	
+	+ upload file1.txt, where file1.txt has an entry under server_loc in the FS.
+	- file1.txt is ignored, as it already exists on a server.
+	
+	+ upload file1.txt, where the file has no server_loc entry, but the file exists on the server.
+	- uploads file1.txt anyway, because its likely not the same file.
+	"""
 	L = getFSList(fsName, patterns)
 	L_ids = []
 	for l in L:
 		L_ids.append(l["id"])
 	postFilesWithList(sLoc, fsName, L_ids, verbose, force)
 
-"""
-postFilesWithList()
------------------------
-Posts files using a list of file IDs.
-"""
 def postFilesWithList(sLoc, fsName, L_ids, verbose=True, force=False):
+	"""
+	postFilesWithList()
+	-----------------------
+	Posts files using a list of file IDs.
+	"""
 
 	# connect to fs
 	con = initFS(fsName)
@@ -127,15 +127,15 @@ def postFilesWithList(sLoc, fsName, L_ids, verbose=True, force=False):
 		print "-- No files were uploaded."
 	return uploadCount
 
-"""
-getFSList()
------------------------
-Gets a list of file information from the FS.
-Not all files returned are suitable for upload, but are files
-the user will want to know about.
-The returned list is JSON serializable!
-"""
 def getFSList(fsName, patterns):
+	"""
+	getFSList()
+	-----------------------
+	Gets a list of file information from the FS.
+	Not all files returned are suitable for upload, but are files
+	the user will want to know about.
+	The returned list is JSON serializable!
+	"""
 
 	# check if database exists
 	con = initFS(fsName)
@@ -160,35 +160,35 @@ def getFSList(fsName, patterns):
 
 
 
-"""
-getMimeType()
------------------------
-Determines mime-type from a file name by
-using the file extension.
-"""
 def getMimeType(fileName):
+	"""
+	getMimeType()
+	-----------------------
+	Determines mime-type from a file name by
+	using the file extension.
+	"""
 	ext = os.path.splitext(fileName)[1]
 	if ext == "test":
 		return "application/x-nglog"
 	return "application/octet-stream"
 
-"""
-postFile_FS()
------------------------
-Posts a single file to a NGAS server using a FS file.
-Uploads even if the file exists on NGAS already.
-
-ARGS:
-sLoc 		- server address string (e.g. "http://ec2-54-152-35-198.compute-1.amazonaws.com:7777/")
-				String should contain the trailing '/'.
-file_id 	- id of file in database
-options		- options
-				"-v" print server's response.
-
-RETURN:
-status of server's response
-"""
 def postFile_FS(sLoc, fsName, file_id, verbose=True):
+	"""
+	postFile_FS()
+	-----------------------
+	Posts a single file to a NGAS server using a FS file.
+	Uploads even if the file exists on NGAS already.
+	
+	ARGS:
+	sLoc 		- server address string (e.g. "http://ec2-54-152-35-198.compute-1.amazonaws.com:7777/")
+					String should contain the trailing '/'.
+	file_id 	- id of file in database
+	options		- options
+					"-v" print server's response.
+	
+	RETURN:
+	status of server's response
+	"""
 
 	# get file from DB
 	conFS = initFS(fsName)
@@ -231,23 +231,23 @@ def postFile_FS(sLoc, fsName, file_id, verbose=True):
 	print r.status, r.reason
 	return r.status
 
-"""
-postFile_path()
------------------------
-Posts a single file to a NGAS server using a path.
-Uploads even if the file exists on NGAS already.
-
-ARGS:
-sLoc 		- server address string (e.g. "http://ec2-54-152-35-198.compute-1.amazonaws.com:7777/")
-				String should contain the trailing '/'.
-filePath 		- relative path to the file.
-options		- options
-				"-v" print server's response.
-
-RETURN:
-status of server's response
-"""
 def postFile_path(sLoc, filePath, verbose=True):
+	"""
+	postFile_path()
+	-----------------------
+	Posts a single file to a NGAS server using a path.
+	Uploads even if the file exists on NGAS already.
+	
+	ARGS:
+	sLoc 		- server address string (e.g. "http://ec2-54-152-35-198.compute-1.amazonaws.com:7777/")
+					String should contain the trailing '/'.
+	filePath 		- relative path to the file.
+	options		- options
+					"-v" print server's response.
+	
+	RETURN:
+	status of server's response
+	"""
 
 	# check if file exists
 	if not os.path.isfile(filePath):

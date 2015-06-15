@@ -11,21 +11,21 @@ import argparse
 
 from tables import *
 
-"""
-getServerList()
------------------------
-Returns a numpy list of files, sorted by date created.
-The returned list is JSON serializable!
-
-ARGS:
-sLoc        - server address string (e.g. "http://ec2-54-152-35-198.compute-1.amazonaws.com:7777/")
-                String should contain the trailing '/'.
-patterns    - array of patterns to match NGAS files to.
-                Files are matched using SQL query: "SELECT file WHERE file_id LIKE pattern"
-RETURN:
-numpy array of files, sorted by descending creation date
-"""
 def getServerList(sLoc, patterns):
+    """
+    getServerList()
+    -----------------------
+    Returns a numpy list of files, sorted by date created.
+    The returned list is JSON serializable!
+    
+    ARGS:
+    sLoc        - server address string (e.g. "http://ec2-54-152-35-198.compute-1.amazonaws.com:7777/")
+                    String should contain the trailing '/'.
+    patterns    - array of patterns to match NGAS files to.
+                    Files are matched using SQL query: "SELECT file WHERE file_id LIKE pattern"
+    RETURN:
+    numpy array of files, sorted by descending creation date
+    """
 
     # specify dtype for numpy arrays. 'object' allows variable-length strings.
     dtype = [('col1', object), ('col2', object), ('col3', object), ('col4', object),
@@ -51,18 +51,18 @@ def getServerList(sLoc, patterns):
 
     return T.tolist()   # must be standard array for JSON serialization
 
-"""
-getFilesFromList()
------------------------
-Add files to FS with a numpy list.
-
-ARGS:
-fsName      - path to FS database sqlite3 file.
-T           - The numpy list of file info, sorted by descending version
-RETURN:
-upload count
-"""
 def getFilesFromList(sLoc, fsName, T, verbose=True):
+    """
+    getFilesFromList()
+    -----------------------
+    Add files to FS with a numpy list.
+    
+    ARGS:
+    fsName      - path to FS database sqlite3 file.
+    T           - The numpy list of file info, sorted by descending version
+    RETURN:
+    upload count
+    """
 
     # connect to DB
     con = initFS(fsName)
@@ -113,50 +113,47 @@ def getFilesFromList(sLoc, fsName, T, verbose=True):
     return uploadCount
 
 
-"""
-getFiles() /ngas.ddns.net
------------------------
-Add multiple files to a FS from a NGAS server.
-Will ignore files with the same ID as files in FS.
-
-ARGS:
-sLoc        - server address string (e.g. "http://ec2-54-152-35-198.compute-1.amazonaws.com:7777/")
-                String should contain the trailing '/'.
-fsName      - path to FS database sqlite3 file.
-patterns    - array of patterns to match NGAS files to.
-                Files are matched using SQL query: "SELECT file WHERE file_id LIKE pattern"
-
-RETURN:
-upload count
-"""
 def getFiles(sLoc, fsName, patterns, verbose=True):
+    """
+    getFiles() /ngas.ddns.net
+    -----------------------
+    Add multiple files to a FS from a NGAS server.
+    Will ignore files with the same ID as files in FS.
+    
+    ARGS:
+    sLoc        - server address string (e.g. "http://ec2-54-152-35-198.compute-1.amazonaws.com:7777/")
+                    String should contain the trailing '/'.
+    fsName      - path to FS database sqlite3 file.
+    patterns    - array of patterns to match NGAS files to.
+                    Files are matched using SQL query: "SELECT file WHERE file_id LIKE pattern"
+    
+    RETURN:
+    upload count
+    """
     return getFilesFromList(sLoc, fsName, getServerList(sLoc, patterns))
 
-"""
-downloadFS()
-"""
 def downloadFS(sLoc, fsName, verbose=True, force=False):
+    """
+    downloadFile()
+    -----------------------
+    Downloads a single file from NGAS server.
+    Will download to the current working directory.
+    If the file already exists, the download is cancelled.
+    
+    ARGS:
+    sLoc        - server address string (e.g. "http://ec2-54-152-35-198.compute-1.amazonaws.com:7777/")
+                    String should contain the trailing '/'.
+    file_id     - the ID of file to download.
+    options     - options.
+                    "-f" force download of file. If file aleady exists, it is overwritten.
+    
+    RETURN:
+    """
     # check for the '.sqlite' extension on fsName (maybe .ngas.sqlite special file?)
     if not fsName.endswith('.sqlite'):
         fsName = fsName + ".sqlite"
     return downloadFile(sLoc, fsName, verbose, force)
 
-"""
-downloadFile()
------------------------
-Downloads a single file from NGAS server.
-Will download to the current working directory.
-If the file already exists, the download is cancelled.
-
-ARGS:
-sLoc        - server address string (e.g. "http://ec2-54-152-35-198.compute-1.amazonaws.com:7777/")
-                String should contain the trailing '/'.
-file_id     - the ID of file to download.
-options     - options.
-                "-f" force download of file. If file aleady exists, it is overwritten.
-
-RETURN:
-"""
 def downloadFile(sLoc, file_id, verbose=True, force=False):
 
     if not force:
